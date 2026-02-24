@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: consultorio-psique-turnos
+  
+  # Configuración de Base de Datos
+  datasource:
+    url: jdbc:postgresql://localhost:5432/consultorio-psique-turnos
+    username: postgres
+    password: root
+    driver-class-name: org.postgresql.Driver
+  
+  # Configuración JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  
+  # Configuración de puerto
+server:
+  port: 3000
+  
+# Configuración de logging
+logging:
+  level:
+    com.psique.turnos: DEBUG
+    org.springframework.web: INFO
+    org.hibernate: INFO

@@ -1,0 +1,347 @@
+﻿/* Home Page Styles - Diseño Simplificado */
+
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+}
+
+/* Hero Section Simplificado */
+.hero-simple {
+  background: linear-gradient(135deg, #9BA8C9 0%, #B5C1D9 100%);
+  color: white;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.hero-simple h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hero-simple .subtitle {
+  font-size: 1.3rem;
+  margin-bottom: 2rem;
+  opacity: 0.95;
+}
+
+.btn-agendar-principal {
+  display: inline-block;
+  background: white;
+  color: #9BA8C9;
+  padding: 16px 48px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.btn-agendar-principal:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+/* Tabs Section */
+.tabs-section {
+  padding: 60px 20px;
+}
+
+.tabs-header {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 40px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: #9BA8C9;
+}
+
+.tab-btn.active {
+  color: #9BA8C9;
+  border-bottom-color: #9BA8C9;
+}
+
+.tabs-content {
+  min-height: 400px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-panel {
+  animation: fadeIn 0.4s ease;
+}
+
+.tab-panel h2 {
+  text-align: center;
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+/* Profesionales Grid */
+.profesionales-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.profesional-card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+}
+
+.profesional-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.profesional-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+}
+
+.profesional-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.profesional-card .titulo {
+  color: #9BA8C9;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.profesional-card .especialidad {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.profesional-card .descripcion {
+  color: #888;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.btn-agendar-small {
+  display: inline-block;
+  background: linear-gradient(135deg, #9BA8C9 0%, #B5C1D9 100%);
+  color: white;
+  padding: 12px 32px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-agendar-small:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(155, 168, 201, 0.4);
+}
+
+/* Instagram Button */
+.btn-instagram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e1306c 0%, #fd1d1d 25%, #f77737 50%, #fcaf45 75%, #ffdc80 100%);
+  color: white;
+  padding: 14px 32px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.05rem;
+  box-shadow: 0 4px 12px rgba(225, 48, 108, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-instagram:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(225, 48, 108, 0.5);
+}
+
+/* Espacio Gallery */
+.espacio-descripcion {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 40px;
+  font-size: 1.1rem;
+  color: #666;
+  line-height: 1.7;
+}
+
+.espacio-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.gallery-item {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.gallery-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-item p {
+  padding: 20px;
+  text-align: center;
+  font-weight: 600;
+  color: #555;
+  margin: 0;
+}
+
+/* Ubicación */
+.ubicacion-info {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.direccion {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.direccion h3 {
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.direccion p {
+  margin: 8px 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.direccion strong {
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.btn-maps {
+  display: inline-block;
+  margin-top: 20px;
+  background: #9BA8C9;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-maps:hover {
+  background: #8a97b8;
+  transform: translateY(-2px);
+}
+
+.mapa {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-simple h1 {
+    font-size: 2rem;
+  }
+
+  .hero-simple .subtitle {
+    font-size: 1.1rem;
+  }
+
+  .tabs-header {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tab-btn {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .tab-btn.active {
+    background: #f0f0f0;
+  }
+
+  .ubicacion-info {
+    grid-template-columns: 1fr;
+  }
+
+  .profesionales-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .espacio-gallery {
+    grid-template-columns: 1fr;
+  }
+}
