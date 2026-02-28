@@ -20,6 +20,8 @@ public class TurnoRequestDTO {
     @NotBlank(message = "La hora es obligatoria")
     private String hora;
     
+    private String modalidad = "presencial";
+
     @NotNull(message = "Los datos del paciente son obligatorios")
     private PacienteDTO paciente;
 }

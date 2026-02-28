@@ -1,0 +1,25 @@
+# Ignorar archivos de desarrollo
+node_modules/
+npm-debug.log*
+.DS_Store
+*.log
+
+# Ignorar archivos de IDE
+.vscode/
+.idea/
+*.iml
+
+# Ignorar archivos de build
+frontend/dist/
+frontend/node_modules/
+backend/target/
+backend/node/
+
+# Ignorar archivos de configuración local
+.env
+.env.local
+*.local
+
+# Ignorar archivos de Git
+.git/
+.gitignore

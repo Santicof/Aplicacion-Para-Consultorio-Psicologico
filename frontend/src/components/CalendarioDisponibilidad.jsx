@@ -171,7 +171,7 @@ function CalendarioDisponibilidad({ profesionalId, onSeleccionFecha, onSeleccion
             <div className="cargando">Cargando horarios...</div>
           ) : (
             <>
-              {horariosDelDia.disponibles.length > 0 ? (
+              {(horariosDelDia.disponibles.length > 0 || horariosDelDia.ocupados.length > 0) ? (
                 <>
                   <div className="leyenda-horarios">
                     <span className="leyenda-item">
@@ -183,25 +183,27 @@ function CalendarioDisponibilidad({ profesionalId, onSeleccionFecha, onSeleccion
                   </div>
                   
                   <div className="horarios-grid-visual">
-                    {profesional && profesional.horarios.map(hora => {
-                      const estaOcupado = horariosDelDia.ocupados.includes(hora);
-                      const estaDisponible = horariosDelDia.disponibles.includes(hora);
-                      
-                      return (
-                        <button
-                          key={hora}
-                          type="button"
-                          className={`horario-visual-btn ${estaOcupado ? 'ocupado' : 'disponible'}`}
-                          onClick={() => estaDisponible && handleSeleccionHora(hora)}
-                          disabled={estaOcupado}
-                        >
-                          <span className="hora-tiempo">{hora}</span>
-                          <span className="hora-estado">
-                            {estaOcupado ? '✕ Ocupado' : '✓ Libre'}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {[...new Set([...horariosDelDia.disponibles, ...horariosDelDia.ocupados])]
+                      .sort()
+                      .map(hora => {
+                        const estaOcupado = horariosDelDia.ocupados.includes(hora);
+                        const estaDisponible = horariosDelDia.disponibles.includes(hora);
+                        
+                        return (
+                          <button
+                            key={hora}
+                            type="button"
+                            className={`horario-visual-btn ${estaOcupado ? 'ocupado' : 'disponible'}`}
+                            onClick={() => estaDisponible && handleSeleccionHora(hora)}
+                            disabled={estaOcupado}
+                          >
+                            <span className="hora-tiempo">{hora}</span>
+                            <span className="hora-estado">
+                              {estaOcupado ? '✕ Ocupado' : '✓ Libre'}
+                            </span>
+                          </button>
+                        );
+                      })}
                   </div>
                 </>
               ) : (

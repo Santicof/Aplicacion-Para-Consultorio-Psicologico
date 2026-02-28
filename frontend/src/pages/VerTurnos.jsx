@@ -8,6 +8,7 @@ function VerTurnos() {
   const [turnos, setTurnos] = useState([]);
   const [profesionales, setProfesionales] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, hoy, proximos
   const [profesionalFiltro, setProfesionalFiltro] = useState('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -16,10 +17,18 @@ function VerTurnos() {
 
   useEffect(() => {
     cargarDatos();
+    
+    // Auto-refresh cada 5 segundos para ver cambios de Google Calendar
+    // (Los cambios se detectan instantáneamente via webhooks en el backend)
+    const intervalo = setInterval(() => {
+      cargarDatos(true); // true = carga silenciosa
+    }, 5000); // 5 segundos
+
+    return () => clearInterval(intervalo);
   }, []);
 
-  const cargarDatos = async () => {
-    setCargando(true);
+  const cargarDatos = async (silencioso = false) => {
+    if (!silencioso) setCargando(true);
     try {
       const [turnosRes, profesionalesRes] = await Promise.all([
         axios.get('/api/turnos'),
@@ -30,9 +39,27 @@ function VerTurnos() {
       setProfesionales(profesionalesRes.data);
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      mostrarMensaje('error', 'Error al cargar los turnos');
+      if (!silencioso) mostrarMensaje('error', 'Error al cargar los turnos');
     } finally {
-      setCargando(false);
+      if (!silencioso) setCargando(false);
+    }
+  };
+
+  const sincronizarGoogleCalendar = async () => {
+    setSincronizando(true);
+    try {
+      await axios.post('/api/turnos/sync');
+      mostrarMensaje('success', '🔄 Sincronizando con Google Calendar...');
+      
+      // Esperar 2 segundos y recargar los turnos
+      setTimeout(() => {
+        cargarDatos();
+      }, 2000);
+    } catch (error) {
+      console.error('Error al sincronizar:', error);
+      mostrarMensaje('error', 'Error al sincronizar con Google Calendar');
+    } finally {
+      setSincronizando(false);
     }
   };
 
@@ -146,9 +173,19 @@ function VerTurnos() {
       <div className="container">
         <div className="page-header">
           <h2 className="page-title">Panel de Turnos - Administrador</h2>
-          <button onClick={handleCerrarSesion} className="btn btn-secondary">
-            Cerrar Sesión
-          </button>
+          <div className="header-actions">
+            <button 
+              onClick={sincronizarGoogleCalendar} 
+              className="btn btn-sync"
+              disabled={sincronizando}
+              title="Sincronizar con Google Calendar"
+            >
+              {sincronizando ? '🔄 Sincronizando...' : '📅 Sincronizar Calendar'}
+            </button>
+            <button onClick={handleCerrarSesion} className="btn btn-secondary">
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
 
         {/* Mensajes */}

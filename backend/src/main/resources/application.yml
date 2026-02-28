@@ -30,3 +30,17 @@ logging:
     com.psique.turnos: DEBUG
     org.springframework.web: INFO
     org.hibernate: INFO
+
+# Google Calendar Integration
+google:
+  calendar:
+    enabled: true
+    credentials:
+      file: classpath:credentials.json
+    application-name: Consultorio Psique Turnos
+    calendar-id: primary
+    timezone: America/Argentina/Buenos_Aires
+    # Webhooks (notificaciones en tiempo real)
+    webhook:
+      enabled: false  # Cambiar a true cuando tengas URL pública
+      url: ""  # Ejemplo: https://tu-dominio.com/api/webhooks/google-calendar

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TurnoRepository extends JpaRepository<Turno, Long> {
@@ -15,4 +16,7 @@ public interface TurnoRepository extends JpaRepository<Turno, Long> {
     List<Turno> findByProfesionalId(Long profesionalId);
     
     List<Turno> findByFecha(LocalDate fecha);
+    
+    // Buscar turno por ID de evento de Google Calendar
+    Optional<Turno> findByGoogleEventId(String googleEventId);
 }

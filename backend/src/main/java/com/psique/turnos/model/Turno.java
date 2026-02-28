@@ -35,6 +35,13 @@ public class Turno {
     @Column(nullable = false)
     private String estado = "confirmado";
 
+    @Column(columnDefinition = "varchar(255) DEFAULT 'presencial'")
+    private String modalidad = "presencial"; // "presencial" o "virtual"
+    
+    // ID del evento en Google Calendar para sincronización
+    @Column(name = "google_event_id")
+    private String googleEventId;
+
     @Embeddable
     @Data
     @NoArgsConstructor

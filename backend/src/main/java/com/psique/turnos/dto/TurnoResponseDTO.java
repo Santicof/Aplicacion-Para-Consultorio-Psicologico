@@ -14,4 +14,5 @@ public class TurnoResponseDTO {
     private String hora;
     private PacienteDTO paciente;
     private String estado;
+    private String modalidad;
 }

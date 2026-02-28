@@ -14,6 +14,7 @@ function AgendarTurno() {
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
   const [horariosOcupados, setHorariosOcupados] = useState([]);
   const [horaSeleccionada, setHoraSeleccionada] = useState('');
+  const [modalidad, setModalidad] = useState('presencial');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [turnoConfirmado, setTurnoConfirmado] = useState(null);
@@ -111,6 +112,7 @@ function AgendarTurno() {
         profesionalId: profesionalSeleccionado.id,
         fecha: fechaSeleccionada,
         hora: horaSeleccionada,
+        modalidad: modalidad,
         paciente: datosUsuario
       };
 
@@ -119,7 +121,8 @@ function AgendarTurno() {
       setTurnoConfirmado({
         profesional: profesionalSeleccionado.nombre,
         fecha: fechaSeleccionada,
-        hora: horaSeleccionada
+        hora: horaSeleccionada,
+        modalidad: modalidad
       });
       mostrarMensaje('success', '¡Turno agendado exitosamente!');
     } catch (error) {
@@ -141,6 +144,7 @@ function AgendarTurno() {
     setProfesionalSeleccionado(null);
     setFechaSeleccionada('');
     setHoraSeleccionada('');
+    setModalidad('presencial');
     setDatosUsuario({ nombre: '', telefono: '', email: '', motivo: '' });
   };
 
@@ -199,6 +203,7 @@ function AgendarTurno() {
                 day: 'numeric' 
               })}</p>
               <p><strong>Hora:</strong> {turnoConfirmado.hora}</p>
+              <p><strong>Modalidad:</strong> {turnoConfirmado.modalidad === 'virtual' ? '💻 Virtual (videollamada)' : '🏢 Presencial'}</p>
             </div>
             <p className="confirmacion-mensaje">
               Te esperamos en el consultorio. Por favor llega 5 minutos antes de tu cita.
@@ -324,6 +329,32 @@ function AgendarTurno() {
                   rows="4"
                   placeholder="Breve descripción del motivo de consulta..."
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Modalidad del turno *</label>
+                <div className="modalidad-opciones">
+                  <label className={`modalidad-opcion ${modalidad === 'presencial' ? 'seleccionada' : ''}`}>
+                    <input
+                      type="radio"
+                      name="modalidad"
+                      value="presencial"
+                      checked={modalidad === 'presencial'}
+                      onChange={(e) => setModalidad(e.target.value)}
+                    />
+                    🏢 Presencial
+                  </label>
+                  <label className={`modalidad-opcion ${modalidad === 'virtual' ? 'seleccionada' : ''}`}>
+                    <input
+                      type="radio"
+                      name="modalidad"
+                      value="virtual"
+                      checked={modalidad === 'virtual'}
+                      onChange={(e) => setModalidad(e.target.value)}
+                    />
+                    💻 Virtual (videollamada)
+                  </label>
+                </div>
               </div>
 
               <div className="form-acciones">

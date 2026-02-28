@@ -22,6 +22,7 @@ public class TurnoService {
 
     private final TurnoRepository turnoRepository;
     private final ProfesionalRepository profesionalRepository;
+    private final GoogleCalendarService googleCalendarService;
 
     public List<TurnoResponseDTO> obtenerTodos() {
         return turnoRepository.findAll().stream()
@@ -54,14 +55,59 @@ public class TurnoService {
         turno.setPaciente(paciente);
         
         turno.setEstado("confirmado");
+        turno.setModalidad(request.getModalidad() != null ? request.getModalidad() : "presencial");
 
+        // Guardar turno en BD
         Turno turnoGuardado = turnoRepository.save(turno);
+        
+        // Sincronizar con Google Calendar
+        String googleEventId = googleCalendarService.createEvent(turnoGuardado);
+        if (googleEventId != null) {
+            turnoGuardado.setGoogleEventId(googleEventId);
+            turnoGuardado = turnoRepository.save(turnoGuardado);
+        }
+        
         return convertirADTO(turnoGuardado);
     }
 
     @Transactional
     public void eliminarTurno(Long id) {
-        turnoRepository.deleteById(id);
+        // Obtener el turno antes de eliminarlo para obtener el googleEventId
+        Turno turno = turnoRepository.findById(id).orElse(null);
+        
+        if (turno != null) {
+            // Eliminar de Google Calendar si existe
+            if (turno.getGoogleEventId() != null) {
+                googleCalendarService.deleteEvent(turno.getGoogleEventId());
+            }
+            
+            // Eliminar de la base de datos
+            turnoRepository.deleteById(id);
+        }
+    }
+    
+    @Transactional
+    public TurnoResponseDTO actualizarTurno(Long id, TurnoRequestDTO request) {
+        Turno turno = turnoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+        
+        // Actualizar datos del turno
+        turno.setFecha(LocalDate.parse(request.getFecha()));
+        turno.setHora(LocalTime.parse(request.getHora()));
+        
+        Turno.Paciente paciente = turno.getPaciente();
+        paciente.setNombre(request.getPaciente().getNombre());
+        paciente.setTelefono(request.getPaciente().getTelefono());
+        paciente.setEmail(request.getPaciente().getEmail());
+        paciente.setMotivo(request.getPaciente().getMotivo());
+        
+        // Guardar cambios
+        Turno turnoActualizado = turnoRepository.save(turno);
+        
+        // Sincronizar con Google Calendar
+        googleCalendarService.updateEvent(turnoActualizado);
+        
+        return convertirADTO(turnoActualizado);
     }
 
     private TurnoResponseDTO convertirADTO(Turno turno) {
@@ -71,6 +117,7 @@ public class TurnoService {
         dto.setFecha(turno.getFecha().toString());
         dto.setHora(turno.getHora().toString());
         dto.setEstado(turno.getEstado());
+        dto.setModalidad(turno.getModalidad());
         
         if (turno.getPaciente() != null) {
             com.psique.turnos.dto.PacienteDTO pacienteDTO = new com.psique.turnos.dto.PacienteDTO();

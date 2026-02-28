@@ -14,20 +14,30 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - psique-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  backend:
-    build: ./backend
-    container_name: psique-backend
+  app:
+    build: 
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: psique-app-monolitica
     ports:
       - "3000:3000"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/psique_turnos
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_PROFILES_ACTIVE: prod
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - psique-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -35,3 +45,4 @@ volumes:
 networks:
   psique-network:
     driver: bridge
+

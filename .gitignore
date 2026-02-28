@@ -5,3 +5,9 @@ dist/
 .env
 .env.local
 turnos.json.backup
+frontend/node/
+
+# Google Calendar Credentials - NUNCA subir a Git
+**/google-credentials.json
+**/*credentials*.json
+backend/src/main/resources/google-credentials.json
