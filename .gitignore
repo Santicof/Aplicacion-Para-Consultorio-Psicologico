@@ -11,3 +11,7 @@ frontend/node/
 **/google-credentials.json
 **/*credentials*.json
 backend/src/main/resources/google-credentials.json
+
+backend/tokens/
+*.credential
+StoredCredential

@@ -13,6 +13,40 @@
   text-align: center;
 }
 
+.logo-container {
+  margin-bottom: 30px;
+  animation: fadeInDown 1s ease-out;
+}
+
+.logo-principal {
+  max-width: 200px;
+  height: auto;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+  transition: transform 0.3s ease;
+}
+
+.logo-principal:hover {
+  transform: scale(1.05);
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .hero-simple h1 {
   font-size: 3rem;
   font-weight: 700;
@@ -22,8 +56,17 @@
 
 .hero-simple .subtitle {
   font-size: 1.3rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   opacity: 0.95;
+  font-weight: 600;
+}
+
+.hero-simple .hero-descripcion {
+  font-size: 1.05rem;
+  margin: 0 auto 2rem;
+  max-width: 800px;
+  opacity: 0.9;
+  line-height: 1.6;
 }
 
 .btn-agendar-principal {
@@ -107,6 +150,48 @@
   margin-bottom: 1.5rem;
 }
 
+/* Especialidades Grid */
+.especialidades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 25px;
+  max-width: 1200px;
+  margin: 0 auto 30px;
+}
+
+.especialidad-card {
+  background: linear-gradient(135deg, #9BA8C9 0%, #B5C1D9 100%);
+  color: white;
+  border-radius: 16px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(155, 168, 201, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.especialidad-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(155, 168, 201, 0.5);
+}
+
+.especialidad-icono {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.especialidad-card p {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* Profesionales Grid */
 .profesionales-grid {
   display: grid;
@@ -152,6 +237,17 @@
 .profesional-card .titulo {
   color: #9BA8C9;
   font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.profesional-card .cargo {
+  background: linear-gradient(135deg, #9BA8C9 0%, #B5C1D9 100%);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 16px;
+  border-radius: 12px;
+  display: inline-block;
   margin-bottom: 10px;
 }
 
@@ -310,6 +406,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .logo-principal {
+    max-width: 150px;
+  }
+
   .hero-simple h1 {
     font-size: 2rem;
   }

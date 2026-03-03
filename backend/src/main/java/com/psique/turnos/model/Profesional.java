@@ -22,11 +22,17 @@ public class Profesional {
     @Column(nullable = false)
     private String nombre;
 
+    @Column
+    private String titulo;
+
     @Column(nullable = false)
     private String especialidad;
 
     @Column(length = 500)
     private String descripcion;
+
+    @Column(length = 10)
+    private String colorCalendario = "9"; // Color por defecto: Arándano (Azul)
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "profesional_horarios", joinColumns = @JoinColumn(name = "profesional_id"))

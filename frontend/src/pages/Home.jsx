@@ -1,49 +1,69 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import './Home.css';
+import logo from '../assets/images/logo/logo.jpeg';
+import consul from '../assets/images/consultorio/consul.jpeg';
+import consul1 from '../assets/images/consultorio/consul1.jpeg';
+import consul2 from '../assets/images/consultorio/consul2.jpeg';
 
 function Home() {
   const [activeTab, setActiveTab] = useState('profesionales');
+  const [profesionales, setProfesionales] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const profesionales = [
-    {
-      id: 1,
-      nombre: "Jimena A. Cofman",
-      titulo: "Lic.",
-      especialidad: "Psicóloga Clínica Infanto-Juvenil",
-      descripcion: "Atención especializada en niños y adolescentes.",
-      color: "#9BA8C9"
-    },
-    {
-      id: 2,
-      nombre: "Carolina Orcellet",
-      titulo: "Lic.",
-      especialidad: "Psicóloga Clínica Infanto-Juvenil",
-      descripcion: "Especialista en desarrollo emocional y social.",
-      color: "#B5C1D9"
-    },
-    {
-      id: 3,
-      nombre: "Julieta Porto",
-      titulo: "Lic.",
-      especialidad: "Psicopedagoga Niños y Adolescentes",
-      descripcion: "Evaluación y tratamiento de dificultades de aprendizaje.",
-      color: "#E8B4A8"
-    },
-    {
-      id: 4,
-      nombre: "Erica Baade",
-      titulo: "Lic.",
-      especialidad: "Psicóloga Clínica Adultos",
-      descripcion: "Atención psicológica para adultos.",
-      color: "#F4A261"
-    }
+  const especialidades = [
+    { titulo: "Psicología Infanto Juvenil", icono: "🧒" },
+    { titulo: "Psicopedagogía", icono: "📚" },
+    { titulo: "Taller Habilidades Sociales", icono: "👥" },
+    { titulo: "Fonoaudiología", icono: "🗣️" },
+    { titulo: "Orientación a Familias", icono: "👨‍👩‍👧‍👦" }
   ];
 
+  // Mapeo de colores y datos adicionales para profesionales conocidos
+  const profesionalesExtras = {
+    "Lic. Jimena A. Cofman": { titulo: "Lic.", cargo: "Directora", color: "#9BA8C9" },
+    "Lic. Carolina Orcellet": { titulo: "Lic.", cargo: "", color: "#B5C1D9" },
+    "Lic. Julieta Porto": { titulo: "Lic.", cargo: "", color: "#E8B4A8" },
+    "Lic. Erica Baade": { titulo: "Lic.", cargo: "", color: "#D4A5C9" }
+  };
+
+  const coloresDefecto = ["#9BA8C9", "#B5C1D9", "#E8B4A8", "#D4A5C9", "#A8C9BA", "#C9A8B5"];
+
+  useEffect(() => {
+    cargarProfesionales();
+  }, []);
+
+  const cargarProfesionales = async () => {
+    try {
+      const response = await axios.get('/api/profesionales');
+      // Enriquecer los datos del profesional con info adicional
+      const profesionalesEnriquecidos = response.data.map((prof, index) => {
+        // Extraer nombre sin título si ya lo tiene
+        const nombreSinTitulo = prof.nombre.replace(/^(Lic\.|Dr\.|Dra\.)\s+/, '');
+        const nombreParaBusqueda = prof.nombre;
+        
+        return {
+          ...prof,
+          nombreSinTitulo: nombreSinTitulo,
+          // Usar el titulo de la API si existe, sino buscar en extras, sino dejar vacío
+          titulo: prof.titulo || profesionalesExtras[nombreParaBusqueda]?.titulo || "",
+          cargo: profesionalesExtras[nombreParaBusqueda]?.cargo || "",
+          color: profesionalesExtras[nombreParaBusqueda]?.color || coloresDefecto[index % coloresDefecto.length]
+        };
+      });
+      setProfesionales(profesionalesEnriquecidos);
+    } catch (error) {
+      console.error('Error al cargar profesionales:', error);
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const espacioImages = [
-    '/src/assets/consultorio/consul.jpeg',
-    '/src/assets/consultorio/consul1.jpeg',
-    '/src/assets/consultorio/consul2.jpeg'
+    consul,
+    consul1,
+    consul2
   ];
 
   return (
@@ -51,8 +71,12 @@ function Home() {
       {/* Hero Section Simplificado */}
       <section className="hero-simple">
         <div className="container">
+          <div className="logo-container">
+            <img src={logo} alt="Consultorio Integral Psique Logo" className="logo-principal" />
+          </div>
           <h1>Consultorio Integral Psique</h1>
-          <p className="subtitle">Atención psicológica profesional en Monte Grande</p>
+          <p className="subtitle">Espacio Terapéutico Integral - Monte Grande</p>
+          <p className="hero-descripcion">Un espacio terapéutico con profesionales capacitados y especializados en distintas áreas, con el fin de acompañar cada proceso de forma personalizada.</p>
           <Link to="/agendar" className="btn-agendar-principal">
             Agendar Turno
           </Link>
@@ -87,29 +111,46 @@ function Home() {
             {/* Tab Profesionales */}
             {activeTab === 'profesionales' && (
               <div className="tab-panel">
-                <div className="profesionales-grid">
-                  {profesionales.map((prof) => (
-                    <div key={prof.id} className="profesional-card">
-                      <div 
-                        className="profesional-avatar"
-                        style={{background: prof.color}}
-                      >
-                        {prof.nombre.split(' ')[0].charAt(0)}{prof.nombre.split(' ')[1]?.charAt(0)}
-                      </div>
-                      <h3>{prof.nombre}</h3>
-                      <p className="titulo">{prof.titulo}</p>
-                      <p className="especialidad">{prof.especialidad}</p>
-                      <p className="descripcion">{prof.descripcion}</p>
-                      <Link 
-                        to="/agendar" 
-                        state={{ profesionalId: prof.id }}
-                        className="btn-agendar-small"
-                      >
-                        Agendar
-                      </Link>
+                <h2>Nuestras Especialidades</h2>
+                <div className="especialidades-grid">
+                  {especialidades.map((esp, index) => (
+                    <div key={index} className="especialidad-card">
+                      <span className="especialidad-icono">{esp.icono}</span>
+                      <p>{esp.titulo}</p>
                     </div>
                   ))}
                 </div>
+                <h2 style={{marginTop: '50px'}}>Nuestros Profesionales</h2>
+                {cargando ? (
+                  <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>Cargando profesionales...</p>
+                ) : profesionales.length === 0 ? (
+                  <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>No hay profesionales disponibles</p>
+                ) : (
+                  <div className="profesionales-grid">
+                    {profesionales.map((prof) => (
+                      <div key={prof.id} className="profesional-card">
+                        <div 
+                          className="profesional-avatar"
+                          style={{background: prof.color}}
+                        >
+                          {prof.nombreSinTitulo.split(' ')[0].charAt(0)}{prof.nombreSinTitulo.split(' ')[1]?.charAt(0)}
+                        </div>
+                        <h3>{prof.nombreSinTitulo}</h3>
+                        <p className="titulo">{prof.titulo}</p>
+                        {prof.cargo && <p className="cargo">{prof.cargo}</p>}
+                        <p className="especialidad">{prof.especialidad}</p>
+                        <p className="descripcion">{prof.descripcion}</p>
+                        <Link 
+                          to="/agendar" 
+                          state={{ profesionalId: prof.id }}
+                          className="btn-agendar-small"
+                        >
+                          Agendar
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -118,21 +159,21 @@ function Home() {
               <div className="tab-panel">
                 <h2>Nuestro Consultorio</h2>
                 <p className="espacio-descripcion">
-                  Un espacio cálido y profesional diseñado para tu bienestar. 
-                  Contamos con salas de espera confortables y consultorios equipados 
-                  para brindarte la mejor atención.
+                  Ofrecemos un espacio cálido, profesional y confidencial donde priorizamos tu salud de manera integral. 
+                  Trabajamos desde una mirada humana y cercana, combinando profesionalismo y herramientas terapéuticas 
+                  adaptadas a tus necesidades.
                 </p>
                 <div className="espacio-gallery">
                   <div className="gallery-item">
-                    <img src="/src/assets/consultorio/consul.jpeg" alt="Consultorio Psique" />
+                    <img src={consul} alt="Consultorio Psique" />
                     <p>Espacio de atención</p>
                   </div>
                   <div className="gallery-item">
-                    <img src="/src/assets/consultorio/consul1.jpeg" alt="Consultorio Psique" />
+                    <img src={consul1} alt="Consultorio Psique" />
                     <p>Sala de consulta</p>
                   </div>
                   <div className="gallery-item">
-                    <img src="/src/assets/consultorio/consul2.jpeg" alt="Consultorio Psique" />
+                    <img src={consul2} alt="Consultorio Psique" />
                     <p>Nuestro consultorio</p>
                   </div>
                 </div>

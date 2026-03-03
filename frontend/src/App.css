@@ -31,18 +31,26 @@
 .logo-circle {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #F4A261 0%, #E8B4A8 50%, #B5C1D9 100%);
+  background: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .logo-icon {
   width: 100%;
   height: 100%;
-  color: white;
+  object-fit: contain;
+  border-radius: 50%;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .logo-text h1 {

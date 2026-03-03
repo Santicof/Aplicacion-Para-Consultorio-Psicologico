@@ -29,21 +29,25 @@ public class DataInitializer {
                 );
 
                 profesionalRepository.saveAll(Arrays.asList(
-                    new Profesional(null, "Lic. Jimena A. Cofman", 
-                        "Psicóloga Clínica Infanto-Juvenil",
-                        "Atención especializada en niños y adolescentes", horarios),
+                    new Profesional(null, "Lic. Jimena Cofman", "Lic.",
+                        "Psicóloga Infanto-Juvenil",
+                        "Directora. Diplomada en Terapia Cognitiva Aplicada y Neurodesarrollo.", "9", horarios),
                     
-                    new Profesional(null, "Lic. Carolina Orcellet", 
-                        "Psicóloga Clínica Infanto-Juvenil",
-                        "Atención especializada en niños y adolescentes", horarios),
+                    new Profesional(null, "Lic. Carolina Orcellet", "Lic.",
+                        "Psicóloga Infanto-Juvenil",
+                        "Especialista en TCC (Terapia Cognitivo Conductual)", "10", horarios),
                     
-                    new Profesional(null, "Lic. Julieta Porto", 
-                        "Psicopedagoga Niños y Adolescentes",
-                        "Evaluación y tratamiento psicopedagógico", horarios),
+                    new Profesional(null, "Lic. Julieta Porto", "Lic.",
+                        "Psicopedagoga Infanto-Juvenil",
+                        "Evaluación y tratamiento psicopedagógico", "6", horarios),
                     
-                    new Profesional(null, "Lic. Erica Baade", 
-                        "Psicóloga Clínica Adultos",
-                        "Atención psicológica para adultos", horariosExtendidos)
+                    new Profesional(null, "Lic. Marina Martínez", "Lic.",
+                        "Psicopedagoga Infanto-Juvenil",
+                        "Atención psicopedagógica especializada", "3", horarios),
+                    
+                    new Profesional(null, "Carla Linsalata", "",
+                        "Taller de Legos",
+                        "Fundadora Taller de Legos - Actividades terapéuticas con Lego", "4", horarios)
                 ));
                 
                 System.out.println("✅ Profesionales inicializados en la base de datos");

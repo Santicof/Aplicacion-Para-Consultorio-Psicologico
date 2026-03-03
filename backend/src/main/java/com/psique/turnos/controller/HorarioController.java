@@ -21,6 +21,8 @@ public class HorarioController {
 
     private final ProfesionalService profesionalService;
     private final com.psique.turnos.service.TurnoService turnoService;
+    private final com.psique.turnos.service.HorarioBloqueadoService horarioBloqueadoService;
+    private final com.psique.turnos.service.PacienteFijoService pacienteFijoService;
 
     @GetMapping("/{profesionalId}/{fecha}")
     @Transactional
@@ -37,6 +39,12 @@ public class HorarioController {
                 .map(t -> t.getHora())
                 .collect(Collectors.toSet());
 
+        // Horas bloqueadas (vacaciones, ocupado, etc.)
+        var horasBloqueadas = horarioBloqueadoService.obtenerHorasBloqueadasParaFecha(profesionalId, fecha);
+
+        // Horas ocupadas por pacientes fijos (turnos recurrentes semanales)
+        var horasPacientesFijos = pacienteFijoService.obtenerHorasOcupadasParaFecha(profesionalId, LocalDate.parse(fecha));
+
         // SIEMPRE generar franja horaria completa 08:00 - 19:00
         List<String> todasLasHoras = new ArrayList<>();
         for (int h = 8; h <= 19; h++) {
@@ -45,11 +53,11 @@ public class HorarioController {
         java.util.Collections.sort(todasLasHoras);
 
         List<String> disponibles = todasLasHoras.stream()
-                .filter(h -> !turnosOcupados.contains(h))
+                .filter(h -> !turnosOcupados.contains(h) && !horasBloqueadas.contains(h) && !horasPacientesFijos.contains(h))
                 .collect(Collectors.toList());
         
         List<String> ocupados = todasLasHoras.stream()
-                .filter(turnosOcupados::contains)
+                .filter(h -> turnosOcupados.contains(h) || horasBloqueadas.contains(h) || horasPacientesFijos.contains(h))
                 .collect(Collectors.toList());
         
         Map<String, List<String>> resultado = new HashMap<>();

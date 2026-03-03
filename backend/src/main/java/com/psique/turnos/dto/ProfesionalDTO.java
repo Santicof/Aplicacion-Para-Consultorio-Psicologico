@@ -12,7 +12,9 @@ import java.util.List;
 public class ProfesionalDTO {
     private Long id;
     private String nombre;
+    private String titulo;
     private String especialidad;
     private String descripcion;
+    private String colorCalendario;
     private List<String> horarios;
 }
