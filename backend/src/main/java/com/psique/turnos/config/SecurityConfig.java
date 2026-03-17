@@ -85,7 +85,7 @@ public class SecurityConfig {
             // Headers de seguridad
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
-                    .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-src 'self' https://www.google.com https://maps.google.com; connect-src 'self'")
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self' https://www.google.com https://maps.google.com https://accounts.google.com")
                 )
                 .frameOptions(fo -> fo.sameOrigin())
             )
