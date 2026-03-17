@@ -67,6 +67,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-y: scroll;
 }
 
 body {
@@ -74,6 +75,7 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-y: auto;
 }
 
 #root {
@@ -183,12 +185,4 @@ label {
   animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Scrollbar oculto */
-::-webkit-scrollbar {
-  display: none;
-}
 
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
