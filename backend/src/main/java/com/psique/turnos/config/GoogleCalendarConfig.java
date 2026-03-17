@@ -19,7 +19,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
@@ -39,8 +38,11 @@ public class GoogleCalendarConfig {
     @Value("${google.calendar.credentials.file}")
     private Resource credentialsFile;
 
-    @Value("${google.calendar.credentials.json:#{null}}")
-    private String credentialsJson;
+    @Value("${google.calendar.credentials.client-id:#{null}}")
+    private String clientId;
+
+    @Value("${google.calendar.credentials.client-secret:#{null}}")
+    private String clientSecret;
 
     @Value("${google.calendar.enabled:false}")
     @Getter
@@ -59,25 +61,30 @@ public class GoogleCalendarConfig {
     }
 
     private synchronized GoogleAuthorizationCodeFlow buildFlow() throws IOException, GeneralSecurityException {
-        InputStream in = null;
+        GoogleClientSecrets clientSecrets = null;
 
-        // Opción 1: variable de entorno GOOGLE_CREDENTIALS_JSON (producción)
-        if (credentialsJson != null && !credentialsJson.isBlank()) {
-            log.info("📄 Usando credenciales de Google desde variable de entorno");
-            in = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
+        // Opción 1: variables individuales GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET (producción)
+        if (clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank()) {
+            log.info("📄 Usando credenciales de Google desde variables de entorno (client-id/client-secret)");
+            GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
+            details.setClientId(clientId);
+            details.setClientSecret(clientSecret);
+            details.setAuthUri("https://accounts.google.com/o/oauth2/auth");
+            details.setTokenUri("https://oauth2.googleapis.com/token");
+            clientSecrets = new GoogleClientSecrets();
+            clientSecrets.setWeb(details);
         }
         // Opción 2: archivo credentials.json (desarrollo local)
         else if (credentialsFile != null && credentialsFile.exists()) {
             log.info("📄 Usando credenciales de Google desde archivo credentials.json");
-            in = credentialsFile.getInputStream();
+            InputStream in = credentialsFile.getInputStream();
+            clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
         }
 
-        if (in == null) {
-            log.warn("⚠️ No se encontraron credenciales de Google Calendar (ni variable de entorno ni archivo)");
+        if (clientSecrets == null) {
+            log.warn("⚠️ No se encontraron credenciales de Google Calendar");
             return null;
         }
-
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
         return new GoogleAuthorizationCodeFlow.Builder(
                 getHttpTransport(), JSON_FACTORY, clientSecrets, SCOPES)
@@ -171,8 +178,8 @@ public class GoogleCalendarConfig {
         }
 
         try {
-            // Verificar que hay credenciales disponibles (archivo o variable de entorno)
-            boolean hasCredentials = (credentialsJson != null && !credentialsJson.isBlank())
+            // Verificar que hay credenciales disponibles (archivo o variables de entorno)
+            boolean hasCredentials = (clientId != null && !clientId.isBlank())
                     || (credentialsFile != null && credentialsFile.exists());
             if (!hasCredentials) {
                 log.warn("⚠️ No se encontraron credenciales de Google Calendar");

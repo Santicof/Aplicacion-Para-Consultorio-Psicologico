@@ -63,7 +63,8 @@ google:
     enabled: ${GOOGLE_CALENDAR_ENABLED:true}
     credentials:
       file: classpath:credentials.json
-      json: ${GOOGLE_CREDENTIALS_JSON:}
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
     application-name: Consultorio Psique Turnos
     calendar-id: primary
     timezone: America/Argentina/Buenos_Aires
