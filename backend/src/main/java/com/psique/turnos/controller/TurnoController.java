@@ -16,7 +16,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/turnos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class TurnoController {
 
     private final TurnoService turnoService;

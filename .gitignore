@@ -7,6 +7,9 @@ dist/
 turnos.json.backup
 frontend/node/
 
+# Build outputs
+backend/target/
+
 # Google Calendar Credentials - NUNCA subir a Git
 **/google-credentials.json
 **/*credentials*.json

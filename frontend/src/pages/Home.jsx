@@ -1,16 +1,22 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { consultorioInfo } from '../config/consultorioInfo';
 import './Home.css';
 import logo from '../assets/images/logo/logo.jpeg';
 import consul from '../assets/images/consultorio/consul.jpeg';
 import consul1 from '../assets/images/consultorio/consul1.jpeg';
 import consul2 from '../assets/images/consultorio/consul2.jpeg';
+import consul3 from '../assets/images/consultorio/WhatsApp Image 2026-03-07 at 3.48.29 PM.jpeg';
+import consul4 from '../assets/images/consultorio/WhatsApp Image 2026-03-07 at 3.48.29 PM (1).jpeg';
+import consul5 from '../assets/images/consultorio/WhatsApp Image 2026-03-07 at 3.48.30 PM.jpeg';
+import consul6 from '../assets/images/consultorio/WhatsApp Image 2026-03-07 at 3.49.35 PM.jpeg';
 
 function Home() {
   const [activeTab, setActiveTab] = useState('profesionales');
   const [profesionales, setProfesionales] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [eventos, setEventos] = useState([]);
 
   const especialidades = [
     { titulo: "Psicología Infanto Juvenil", icono: "🧒" },
@@ -32,6 +38,7 @@ function Home() {
 
   useEffect(() => {
     cargarProfesionales();
+    cargarEventos();
   }, []);
 
   const cargarProfesionales = async () => {
@@ -60,11 +67,55 @@ function Home() {
     }
   };
 
+  const cargarEventos = async () => {
+    try {
+      const response = await axios.get('/api/eventos/publicos');
+      setEventos(response.data);
+    } catch (error) {
+      console.error('Error al cargar eventos:', error);
+    }
+  };
+
   const espacioImages = [
-    consul,
-    consul1,
-    consul2
+    { src: consul3, titulo: 'Recepción' },
+    { src: consul, titulo: 'Consultorio principal' },
+    { src: consul1, titulo: 'Sala de atención' },
+    { src: consul5, titulo: 'Hall de ingreso' },
+    { src: consul4, titulo: 'Espacio terapéutico' },
+    { src: consul2, titulo: 'Sala de espera' },
+    { src: consul6, titulo: 'Área de trabajo' }
   ];
+
+  const inscribirseEvento = (evento) => {
+    const mensaje = `Hola! Me comunico desde la web del Consultorio Integral Psique.%0A%0A` +
+      `Quiero inscribirme al evento: *${evento.titulo}*%0A` +
+      (evento.fechaEvento ? `Fecha: ${new Date(evento.fechaEvento + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}%0A` : '') +
+      (evento.horarioEvento ? `Horario: ${evento.horarioEvento}%0A` : '') +
+      `%0AMis datos:%0A` +
+      `Nombre: (completar)%0A` +
+      `Apellido: (completar)%0A` +
+      `Teléfono: (completar)%0A` +
+      `Edad: (completar)`;
+    const url = `https://wa.me/${consultorioInfo.contacto.whatsapp}?text=${mensaje}`;
+    window.open(url, '_blank');
+  };
+
+  const [imagenAbierta, setImagenAbierta] = useState(null);
+
+  const abrirLightbox = (idx) => setImagenAbierta(idx);
+  const cerrarLightbox = () => setImagenAbierta(null);
+  const lightboxSiguiente = () => setImagenAbierta((prev) => (prev + 1) % espacioImages.length);
+  const lightboxAnterior = () => setImagenAbierta((prev) => (prev - 1 + espacioImages.length) % espacioImages.length);
+
+  const cancelarTurnoPorWhatsApp = () => {
+    const mensaje = `Hola, necesito cancelar un turno.%0A%0A` +
+      `Por favor, ayúdenme con la cancelación.%0A%0A` +
+      `Mis datos son:%0A` +
+      `(Completar: Nombre, fecha y hora del turno)`;
+    
+    const urlWhatsApp = `https://wa.me/${consultorioInfo.contacto.whatsapp}?text=${mensaje}`;
+    window.open(urlWhatsApp, '_blank');
+  };
 
   return (
     <div className="home-page">
@@ -75,11 +126,35 @@ function Home() {
             <img src={logo} alt="Consultorio Integral Psique Logo" className="logo-principal" />
           </div>
           <h1>Consultorio Integral Psique</h1>
-          <p className="subtitle">Espacio Terapéutico Integral - Monte Grande</p>
+          <p className="subtitle">Espacio Terapéutico Integral</p>
           <p className="hero-descripcion">Un espacio terapéutico con profesionales capacitados y especializados en distintas áreas, con el fin de acompañar cada proceso de forma personalizada.</p>
-          <Link to="/agendar" className="btn-agendar-principal">
-            Agendar Turno
-          </Link>
+          <div className="mision-section">
+            <p className="mision-texto">
+              Brindar atención profesional de calidad mediante el trabajo articulado entre distintas disciplinas, 
+              con el objetivo de acompañar el desarrollo integral de niños, niñas y adolescentes. 
+              Nuestro enfoque se centra en la escucha activa, el respeto por los tiempos de cada paciente 
+              y la construcción de un vínculo terapéutico sólido, en un ambiente cálido y seguro.
+            </p>
+          </div>
+          <div className="hero-buttons">
+            <Link to="/agendar" className="btn-agendar-principal">
+              📅 Agendar Turno
+            </Link>
+            <button 
+              onClick={cancelarTurnoPorWhatsApp}
+              className="btn-cancelar-principal"
+            >
+              ❌ Cancelar Turno
+            </button>
+            <a
+              href={`https://wa.me/${consultorioInfo.contacto.whatsapp}?text=${encodeURIComponent('Hola! Me comunico desde la web del Consultorio Integral Psique. Quisiera hacer una consulta.')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-contactanos-principal"
+            >
+              📲 Contactanos
+            </a>
+          </div>
         </div>
       </section>
 
@@ -98,6 +173,12 @@ function Home() {
               onClick={() => setActiveTab('espacio')}
             >
               Nuestro Espacio
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'eventos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('eventos')}
+            >
+              Eventos
             </button>
             <button 
               className={`tab-btn ${activeTab === 'ubicacion' ? 'active' : ''}`}
@@ -163,20 +244,43 @@ function Home() {
                   Trabajamos desde una mirada humana y cercana, combinando profesionalismo y herramientas terapéuticas 
                   adaptadas a tus necesidades.
                 </p>
-                <div className="espacio-gallery">
-                  <div className="gallery-item">
-                    <img src={consul} alt="Consultorio Psique" />
-                    <p>Espacio de atención</p>
+                <div className="galeria-grid">
+                  <div className="galeria-featured" onClick={() => abrirLightbox(0)}>
+                    <img src={espacioImages[0].src} alt={espacioImages[0].titulo} />
+                    <div className="galeria-overlay">
+                      <span>{espacioImages[0].titulo}</span>
+                    </div>
                   </div>
-                  <div className="gallery-item">
-                    <img src={consul1} alt="Consultorio Psique" />
-                    <p>Sala de consulta</p>
-                  </div>
-                  <div className="gallery-item">
-                    <img src={consul2} alt="Consultorio Psique" />
-                    <p>Nuestro consultorio</p>
+                  <div className="galeria-thumbnails">
+                    {espacioImages.slice(1).map((img, idx) => (
+                      <div
+                        key={idx + 1}
+                        className="galeria-thumb"
+                        onClick={() => abrirLightbox(idx + 1)}
+                      >
+                        <img src={img.src} alt={img.titulo} />
+                        <div className="galeria-overlay">
+                          <span>{img.titulo}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                {/* Lightbox */}
+                {imagenAbierta !== null && (
+                  <div className="lightbox-backdrop" onClick={cerrarLightbox}>
+                    <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                      <button className="lightbox-cerrar" onClick={cerrarLightbox}>✕</button>
+                      <button className="lightbox-flecha lightbox-flecha-izq" onClick={lightboxAnterior}>‹</button>
+                      <img src={espacioImages[imagenAbierta].src} alt={espacioImages[imagenAbierta].titulo} />
+                      <p className="lightbox-titulo">{espacioImages[imagenAbierta].titulo}</p>
+                      <button className="lightbox-flecha lightbox-flecha-der" onClick={lightboxSiguiente}>›</button>
+                      <div className="lightbox-contador">{imagenAbierta + 1} / {espacioImages.length}</div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{textAlign: 'center', marginTop: '40px'}}>
                   <a 
                     href="https://www.instagram.com/consultoriointegral_psique/" 
@@ -193,6 +297,50 @@ function Home() {
               </div>
             )}
 
+            {/* Tab Eventos */}
+            {activeTab === 'eventos' && (
+              <div className="tab-panel">
+                <h2>Eventos y Programas</h2>
+                {eventos.length === 0 ? (
+                  <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>No hay eventos disponibles en este momento</p>
+                ) : (
+                  <div className="eventos-grid">
+                    {eventos.map((evento) => (
+                      <div key={evento.id} className="evento-card">
+                        {evento.imagenBase64 && (
+                          <div className="evento-imagen-wrapper">
+                            <img 
+                              src={evento.imagenBase64} 
+                              alt={evento.titulo} 
+                              className="evento-imagen"
+                            />
+                          </div>
+                        )}
+                        <div className="evento-info">
+                          <h3>{evento.titulo}</h3>
+                          {evento.fechaEvento && (
+                            <p className="evento-fecha">
+                              📅 {new Date(evento.fechaEvento + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </p>
+                          )}
+                          {evento.horarioEvento && (
+                            <p className="evento-fecha">🕐 {evento.horarioEvento}</p>
+                          )}
+                          {evento.descripcion && <p className="evento-descripcion">{evento.descripcion}</p>}
+                          <button 
+                            className="btn-inscribirse-evento"
+                            onClick={() => inscribirseEvento(evento)}
+                          >
+                            📲 Quiero inscribirme
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tab Cómo Llegar */}
             {activeTab === 'ubicacion' && (
               <div className="tab-panel">
@@ -201,7 +349,7 @@ function Home() {
                   <div className="direccion">
                     <h3>📍 Dirección</h3>
                     <p><strong>Rotta 219</strong></p>
-                    <p>Monte Grande, Buenos Aires</p>
+                    <p>Buenos Aires, Argentina</p>
                     <p>Argentina</p>
                     <a 
                       href="https://www.google.com/maps/search/?api=1&query=Rotta+219,+Monte+Grande,+Buenos+Aires" 

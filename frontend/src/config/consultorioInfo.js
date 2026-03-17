@@ -3,14 +3,16 @@ export const consultorioInfo = {
   nombre: "Consultorio Integral Psique",
   ubicacion: {
     calle: "Rotta 219",
-    ciudad: "Monte Grande",
+    ciudad: "Buenos Aires",
     provincia: "Buenos Aires",
     codigoPostal: "1842",
-    direccionCompleta: "Rotta 219, Monte Grande, Buenos Aires 1842"
+    direccionCompleta: "Rotta 219, Buenos Aires 1842"
   },
   contacto: {
     instagram: "@consultoriointegral_psique",
-    instagramUrl: "https://www.instagram.com/consultoriointegral_psique/"
+    instagramUrl: "https://www.instagram.com/consultoriointegral_psique/",
+    telefono: "+54 9 11 7829-0236",
+    whatsapp: "5491178290236" // Número sin + ni espacios para URLs de WhatsApp
   },
   servicios: [
     {

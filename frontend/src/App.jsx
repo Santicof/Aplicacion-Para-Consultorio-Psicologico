@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { securityLogger } from './utils/securityLogger';
 import Home from './pages/Home';
 import AgendarTurno from './pages/AgendarTurno';
 import VerTurnos from './pages/VerTurnos';
@@ -17,7 +18,13 @@ function App() {
   }, []);
 
   const handleLogout = () => {
+    const adminUser = localStorage.getItem('adminUser') || 'admin';
+    securityLogger.logLogout(adminUser);
+    // Cerrar sesión en el servidor
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+      .catch(() => {});
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('adminUser');
     setIsAdmin(false);
     window.location.href = '/';
   };
@@ -34,20 +41,22 @@ function App() {
                 </div>
                 <div className="logo-text">
                   <h1>CONSULTORIO INTEGRAL PSIQUE</h1>
-                  <p>Monte Grande</p>
+                  <p>Espacio Terapéutico Integral</p>
                 </div>
               </div>
               
               <nav className={`nav ${menuOpen ? 'nav-open' : ''}`}>
-                <Link to="/" onClick={() => setMenuOpen(false)}>Inicio</Link>
-                <Link to="/agendar" onClick={() => setMenuOpen(false)}>Agendar Turno</Link>
-                {isAdmin ? (
+                {!isAdmin && (
+                  <>
+                    <Link to="/" onClick={() => setMenuOpen(false)}>Inicio</Link>
+                    <Link to="/agendar" onClick={() => setMenuOpen(false)}>Agendar Turno</Link>
+                  </>
+                )}
+                {isAdmin && (
                   <>
                     <Link to="/turnos" onClick={() => setMenuOpen(false)}>🔒 Administrador</Link>
                     <button onClick={handleLogout} className="btn-logout">Cerrar Sesión</button>
                   </>
-                ) : (
-                  <Link to="/login" onClick={() => setMenuOpen(false)}>Admin</Link>
                 )}
               </nav>
 
@@ -64,7 +73,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/agendar" element={<AgendarTurno />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/gestion-consultorio-interno" element={<Login />} />
             <Route 
               path="/turnos" 
               element={
@@ -81,7 +90,7 @@ function App() {
             <div className="footer-content">
               <div className="footer-section">
                 <h3>Consultorio Integral Psique</h3>
-                <p>Atención psicológica profesional en Monte Grande</p>
+                <p>Atención psicológica profesional e integral</p>
                 <p className="footer-slogan">Tu bienestar, nuestra prioridad</p>
               </div>
               
@@ -98,7 +107,7 @@ function App() {
               <div className="footer-section">
                 <h4>Ubicación</h4>
                 <p>📍 Rotta 219</p>
-                <p>Monte Grande, Buenos Aires</p>
+                <p>Buenos Aires, Argentina</p>
                 <p>Argentina</p>
               </div>
 

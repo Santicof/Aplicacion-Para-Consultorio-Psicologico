@@ -1,6 +1,5 @@
 package com.psique.turnos.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -37,6 +36,5 @@ public class Profesional {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "profesional_horarios", joinColumns = @JoinColumn(name = "profesional_id"))
     @Column(name = "horario")
-    @JsonIgnore
     private List<String> horarios;
 }

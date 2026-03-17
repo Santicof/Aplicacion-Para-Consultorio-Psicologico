@@ -14,7 +14,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pacientes-fijos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class PacienteFijoController {
 
     private final PacienteFijoService pacienteFijoService;

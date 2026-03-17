@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GoogleCalendarService {
 
-    private final Calendar calendar;
     private final GoogleCalendarConfig config;
 
     @Value("${google.calendar.id:primary}")
@@ -37,15 +36,19 @@ public class GoogleCalendarService {
     private String timezone;
 
     @Autowired
-    public GoogleCalendarService(@Autowired(required = false) Calendar calendar, GoogleCalendarConfig config) {
-        this.calendar = calendar;
+    public GoogleCalendarService(GoogleCalendarConfig config) {
         this.config = config;
+    }
+
+    private Calendar getCalendar() {
+        return config.getCalendarService();
     }
 
     /**
      * Crea un evento en Google Calendar cuando se agenda un turno
      */
     public String createEvent(Turno turno) {
+        Calendar calendar = getCalendar();
         if (!config.isCalendarEnabled() || calendar == null) {
             log.info("Google Calendar deshabilitado, evento no creado");
             return null;
@@ -70,6 +73,7 @@ public class GoogleCalendarService {
      * Actualiza un evento existente en Google Calendar
      */
     public void updateEvent(Turno turno) {
+        Calendar calendar = getCalendar();
         if (!config.isCalendarEnabled() || calendar == null || turno.getGoogleEventId() == null) {
             return;
         }
@@ -89,6 +93,7 @@ public class GoogleCalendarService {
      * Elimina un evento de Google Calendar
      */
     public void deleteEvent(String googleEventId) {
+        Calendar calendar = getCalendar();
         if (!config.isCalendarEnabled() || calendar == null || googleEventId == null) {
             return;
         }
@@ -198,6 +203,7 @@ public class GoogleCalendarService {
             return null;
         }
         
+        Calendar calendar = getCalendar();
         if (calendar == null) {
             log.error("❌ El objeto Calendar es NULL - La integración con Google Calendar no está inicializada");
             log.error("❌ Verifique las credenciales y tokens de autenticación");
@@ -231,6 +237,7 @@ public class GoogleCalendarService {
      * Actualiza un evento recurrente existente en Google Calendar
      */
     public void actualizarEventoRecurrente(PacienteFijo pacienteFijo) {
+        Calendar calendar = getCalendar();
         if (!config.isCalendarEnabled() || calendar == null || pacienteFijo.getGoogleEventId() == null) {
             return;
         }
@@ -390,5 +397,9 @@ public class GoogleCalendarService {
             case SABADO -> DayOfWeek.SATURDAY;
             case DOMINGO -> DayOfWeek.SUNDAY;
         };
+    }
+
+    public boolean isConnected() {
+        return config.isConnected();
     }
 }

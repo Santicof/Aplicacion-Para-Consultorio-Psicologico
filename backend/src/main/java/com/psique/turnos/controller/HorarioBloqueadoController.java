@@ -12,7 +12,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/horarios-bloqueados")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class HorarioBloqueadoController {
 
     private final HorarioBloqueadoService horarioBloqueadoService;

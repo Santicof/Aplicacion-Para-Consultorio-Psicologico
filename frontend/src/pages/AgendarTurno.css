@@ -158,14 +158,84 @@
   margin-bottom: 20px;
 }
 
+.confirmacion-info {
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  border-left: 4px solid #4CAF50;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.info-cancelacion {
+  margin: 0;
+  color: #2E7D32;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.info-cancelacion strong {
+  color: #1B5E20;
+}
+
 .confirmacion-acciones {
   margin-top: 25px;
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
 }
 
 .confirmacion-acciones .btn {
   min-width: 200px;
   padding: 14px 32px;
   font-size: 16px;
+}
+
+.btn-whatsapp {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Poppins', sans-serif;
+  min-width: 200px;
+}
+
+.btn-whatsapp:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.5);
+  background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+}
+
+.btn-google-calendar {
+  background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Poppins', sans-serif;
+  min-width: 200px;
+}
+
+.btn-google-calendar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.5);
+  background: linear-gradient(135deg, #3367d6 0%, #2952b3 100%);
 }
 
 /* Lista de profesionales */
@@ -427,4 +497,12 @@
   border-color: var(--color-primary);
   background: var(--color-primary-lighter);
   color: var(--color-primary);
+}
+
+/* Responsive para pantallas grandes */
+@media (min-width: 769px) {
+  .confirmacion-acciones {
+    flex-direction: row;
+    justify-content: center;
+  }
 }

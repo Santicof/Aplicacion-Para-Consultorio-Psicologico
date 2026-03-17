@@ -1,22 +1,49 @@
 package com.psique.turnos.config;
 
 import com.psique.turnos.model.Profesional;
+import com.psique.turnos.model.Usuario;
 import com.psique.turnos.repository.ProfesionalRepository;
+import com.psique.turnos.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class DataInitializer {
 
+    private final PasswordEncoder passwordEncoder;
+
     @Bean
-    CommandLineRunner initDatabase(ProfesionalRepository profesionalRepository) {
+    CommandLineRunner initDatabase(ProfesionalRepository profesionalRepository, UsuarioRepository usuarioRepository) {
         return args -> {
+            // Inicializar usuario administrador si no existe
+            if (usuarioRepository.count() == 0) {
+                Usuario admin = new Usuario();
+                admin.setUsername("adminpsique");
+                admin.setPassword(passwordEncoder.encode("Psique@2024!Secure"));
+                admin.setRol("ADMIN");
+                usuarioRepository.save(admin);
+                log.info("✅ Usuario administrador creado: adminpsique (contraseña hasheada)");
+            } else {
+                // Migrar contraseñas en texto plano a BCrypt
+                usuarioRepository.findAll().forEach(user -> {
+                    if (!user.getPassword().startsWith("$2a$") && !user.getPassword().startsWith("$2b$")) {
+                        String oldPassword = user.getPassword();
+                        user.setPassword(passwordEncoder.encode(oldPassword));
+                        usuarioRepository.save(user);
+                        log.info("🔒 Contraseña migrada a BCrypt para usuario: {}", user.getUsername());
+                    }
+                });
+            }
+
             if (profesionalRepository.count() == 0) {
                 List<String> horarios = Arrays.asList(
                     "08:00", "09:00", "10:00", "11:00", 

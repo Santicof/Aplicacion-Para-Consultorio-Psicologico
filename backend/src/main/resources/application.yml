@@ -4,43 +4,68 @@ spring:
   
   # Configuración de Base de Datos
   datasource:
-    url: jdbc:postgresql://localhost:5432/consultorio-psique-turnos
-    username: postgres
-    password: root
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/consultorio-psique-turnos}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
     driver-class-name: org.postgresql.Driver
   
   # Configuración JPA/Hibernate
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
     open-in-view: false
   
-  # Configuración de puerto
+  # Deshabilitar H2 console en producción
+  h2:
+    console:
+      enabled: false
+  
+  # Configuración de uploads
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # Jackson - permitir strings grandes (base64 imágenes)
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+  
+  # DevTools deshabilitado en producción
+  devtools:
+    restart:
+      enabled: false
+
+# Configuración de puerto
 server:
-  port: 3000
+  port: ${PORT:3000}
+  tomcat:
+    max-http-form-post-size: 10MB
+    max-swallow-size: 10MB
+  # Headers de seguridad
+  error:
+    include-stacktrace: never
+    include-message: never
   
 # Configuración de logging
 logging:
   level:
-    com.psique.turnos: DEBUG
-    org.springframework.web: INFO
-    org.hibernate: INFO
+    com.psique.turnos: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: WARN
 
 # Google Calendar Integration
 google:
   calendar:
-    enabled: true
+    enabled: ${GOOGLE_CALENDAR_ENABLED:true}
     credentials:
       file: classpath:credentials.json
     application-name: Consultorio Psique Turnos
     calendar-id: primary
     timezone: America/Argentina/Buenos_Aires
-    # Webhooks (notificaciones en tiempo real)
     webhook:
-      enabled: false  # Cambiar a true cuando tengas URL pública
-      url: ""  # Ejemplo: https://tu-dominio.com/api/webhooks/google-calendar
+      enabled: false
+      url: ""

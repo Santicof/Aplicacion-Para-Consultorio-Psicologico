@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import CalendarioDisponibilidad from '../components/CalendarioDisponibilidad';
+import { consultorioInfo } from '../config/consultorioInfo';
 import './AgendarTurno.css';
 
 function AgendarTurno() {
@@ -124,7 +125,6 @@ function AgendarTurno() {
         hora: horaSeleccionada,
         modalidad: modalidad
       });
-      mostrarMensaje('success', '¡Turno agendado exitosamente!');
     } catch (error) {
       console.error('Error al agendar turno:', error);
       const mensajeError = error.response?.data?.error || 'Error al agendar el turno';
@@ -146,6 +146,58 @@ function AgendarTurno() {
     setHoraSeleccionada('');
     setModalidad('presencial');
     setDatosUsuario({ nombre: '', telefono: '', email: '', motivo: '' });
+  };
+
+  const cancelarTurnoPorWhatsApp = () => {
+    const fechaFormateada = new Date(turnoConfirmado.fecha + 'T00:00:00').toLocaleDateString('es-AR', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    const mensaje = `Hola, necesito cancelar mi turno:%0A%0A` +
+      `👤 Paciente: ${datosUsuario.nombre}%0A` +
+      `👩‍⚕️ Profesional: ${turnoConfirmado.profesional}%0A` +
+      `📅 Fecha: ${fechaFormateada}%0A` +
+      `⏰ Hora: ${turnoConfirmado.hora}%0A` +
+      `📱 Teléfono: ${datosUsuario.telefono}%0A%0A` +
+      `Por favor, confirmen la cancelación. ¡Gracias!`;
+    
+    const urlWhatsApp = `https://wa.me/${consultorioInfo.contacto.whatsapp}?text=${mensaje}`;
+    window.open(urlWhatsApp, '_blank');
+  };
+
+  const agregarAGoogleCalendar = () => {
+    // Convertir fecha y hora a formato ISO para Google Calendar
+    const [year, month, day] = turnoConfirmado.fecha.split('-');
+    const [hora, minutos] = turnoConfirmado.hora.split(':');
+    
+    // Fecha de inicio en formato YYYYMMDDTHHmmss
+    const fechaInicio = `${year}${month}${day}T${hora}${minutos}00`;
+    
+    // Fecha de fin (1 hora después)
+    const fechaFin = new Date(turnoConfirmado.fecha + 'T' + turnoConfirmado.hora);
+    fechaFin.setHours(fechaFin.getHours() + 1);
+    const yearFin = fechaFin.getFullYear();
+    const monthFin = String(fechaFin.getMonth() + 1).padStart(2, '0');
+    const dayFin = String(fechaFin.getDate()).padStart(2, '0');
+    const horaFin = String(fechaFin.getHours()).padStart(2, '0');
+    const minutosFin = String(fechaFin.getMinutes()).padStart(2, '0');
+    const fechaFinFormateada = `${yearFin}${monthFin}${dayFin}T${horaFin}${minutosFin}00`;
+    
+    const titulo = encodeURIComponent(`Turno - ${turnoConfirmado.profesional}`);
+    const detalles = encodeURIComponent(
+      `Turno de ${turnoConfirmado.modalidad === 'virtual' ? 'consulta virtual' : 'consulta presencial'} con ${turnoConfirmado.profesional}\n\n` +
+      `Paciente: ${datosUsuario.nombre}\n` +
+      `Teléfono: ${datosUsuario.telefono}\n` +
+      `${datosUsuario.motivo ? 'Motivo: ' + datosUsuario.motivo : ''}`
+    );
+    const ubicacion = encodeURIComponent(consultorioInfo.ubicacion.direccionCompleta);
+    
+    const urlGoogleCalendar = `https://www.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${fechaInicio}/${fechaFinFormateada}&details=${detalles}&location=${ubicacion}`;
+    
+    window.open(urlGoogleCalendar, '_blank');
   };
 
   const obtenerFechaMinima = () => {
@@ -208,7 +260,25 @@ function AgendarTurno() {
             <p className="confirmacion-mensaje">
               Te esperamos en el consultorio. Por favor llega 5 minutos antes de tu cita.
             </p>
+            <div className="confirmacion-info">
+              <p className="info-cancelacion">
+                💡 <strong>¿Necesitas cancelar o reprogramar?</strong><br/>
+                Comunicate con nosotros por WhatsApp con al menos 24hs de anticipación.
+              </p>
+            </div>
             <div className="confirmacion-acciones">
+              <button 
+                className="btn btn-google-calendar"
+                onClick={agregarAGoogleCalendar}
+              >
+                📅 Agregar a Google Calendar
+              </button>
+              <button 
+                className="btn btn-whatsapp"
+                onClick={cancelarTurnoPorWhatsApp}
+              >
+                📱 Cancelar por WhatsApp
+              </button>
               <Link to="/" className="btn btn-primary">
                 Volver al Inicio
               </Link>

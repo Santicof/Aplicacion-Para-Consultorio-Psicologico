@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './VerTurnos.css';
@@ -54,7 +54,8 @@ function VerTurnos() {
     titulo: '',
     especialidad: '',
     descripcion: '',
-    colorCalendario: '9'
+    colorCalendario: '9',
+    horarios: []
   });
 
   // Colores disponibles en Google Calendar
@@ -86,14 +87,45 @@ function VerTurnos() {
     observaciones: ''
   });
 
+  // Estados para mantenimiento/limpieza
+  const [limpiezaPreview, setLimpiezaPreview] = useState(null);
+  const [cargandoLimpieza, setCargandoLimpieza] = useState(false);
+  const [modalConfirmarLimpieza, setModalConfirmarLimpieza] = useState(false);
+  const [resultadoLimpieza, setResultadoLimpieza] = useState(null);
+
+  // Estados para gestión de eventos
+  const [eventos, setEventos] = useState([]);
+  const [mostrarFormularioEvento, setMostrarFormularioEvento] = useState(false);
+  const [eventoEditando, setEventoEditando] = useState(null);
+  const [modalEliminarEvento, setModalEliminarEvento] = useState({ visible: false, evento: null });
+  const [nuevoEvento, setNuevoEvento] = useState({
+    titulo: '',
+    descripcion: '',
+    fechaEvento: '',
+    horarioEvento: '',
+    imagenBase64: ''
+  });
+  const [imagenPreview, setImagenPreview] = useState(null);
+
+  // Estados para Google Calendar
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState(null);
+  const [cargandoGoogleCalendar, setCargandoGoogleCalendar] = useState(false);
+  const [googleCalendarError, setGoogleCalendarError] = useState(null);
+
+  // Estados para días no laborables
+  const [diasNoLaborables, setDiasNoLaborables] = useState({ diasSemana: [], fechasEspecificas: [] });
+  const [nuevaFechaNoLaborable, setNuevaFechaNoLaborable] = useState({ fecha: '', descripcion: '' });
+  const [cargandoDiasNoLaborables, setCargandoDiasNoLaborables] = useState(false);
+
   useEffect(() => {
     cargarDatos();
+    // Auto-sync Google Calendar al iniciar
+    axios.post('/api/turnos/sync').catch(() => {});
     
     // Auto-refresh cada 5 segundos para ver cambios de Google Calendar
-    // (Los cambios se detectan instantáneamente via webhooks en el backend)
     const intervalo = setInterval(() => {
-      cargarDatos(true); // true = carga silenciosa
-    }, 5000); // 5 segundos
+      cargarDatos(true);
+    }, 5000);
 
     return () => clearInterval(intervalo);
   }, []);
@@ -107,6 +139,18 @@ function VerTurnos() {
   useEffect(() => {
     if (tabActiva === 'pacientesFijos') {
       cargarPacientesFijos();
+    }
+  }, [tabActiva]);
+
+  useEffect(() => {
+    if (tabActiva === 'diasNoLaborables') {
+      cargarDiasNoLaborables();
+    }
+  }, [tabActiva]);
+
+  useEffect(() => {
+    if (tabActiva === 'eventos') {
+      cargarEventos();
     }
   }, [tabActiva]);
 
@@ -155,7 +199,12 @@ function VerTurnos() {
       cargarDatos();
     } catch (error) {
       console.error('Error al cancelar turno:', error);
-      mostrarMensaje('error', 'Error al cancelar el turno');
+      if (error.response && error.response.status === 401) {
+        mostrarMensaje('error', 'Sesión expirada. Por favor, inicie sesión nuevamente.');
+        setTimeout(() => window.location.href = '/gestion-consultorio-interno', 2000);
+      } else {
+        mostrarMensaje('error', 'Error al cancelar el turno: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
@@ -169,8 +218,11 @@ function VerTurnos() {
 
   const mostrarMensaje = (tipo, texto) => {
     setMensaje({ tipo, texto });
-    setTimeout(() => setMensaje({ tipo: '', texto: '' }), 5000);
+    const duracion = tipo === 'error' ? 6000 : 4000;
+    setTimeout(() => setMensaje((prev) => prev.texto === texto ? { tipo: '', texto: '' } : prev), duracion);
   };
+
+  const cerrarMensaje = () => setMensaje({ tipo: '', texto: '' });
 
   const obtenerNombreProfesional = (profesionalId) => {
     const prof = profesionales.find(p => p.id === profesionalId);
@@ -247,7 +299,9 @@ function VerTurnos() {
   const turnosAgrupados = agruparTurnosPorFecha();
 
   const handleCerrarSesion = () => {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
     localStorage.removeItem('isAdmin');
+    localStorage.removeItem('adminUser');
     navigate('/');
   };
 
@@ -573,7 +627,8 @@ function VerTurnos() {
         titulo: profesional.titulo || '',
         especialidad: profesional.especialidad,
         descripcion: profesional.descripcion || '',
-        colorCalendario: profesional.colorCalendario || '9'
+        colorCalendario: profesional.colorCalendario || '9',
+        horarios: profesional.horarios || []
       });
     } else {
       setProfesionalEditando(null);
@@ -582,7 +637,8 @@ function VerTurnos() {
         titulo: '',
         especialidad: '',
         descripcion: '',
-        colorCalendario: '9'
+        colorCalendario: '9',
+        horarios: []
       });
     }
     setMostrarFormularioProfesional(true);
@@ -596,7 +652,8 @@ function VerTurnos() {
       titulo: '',
       especialidad: '',
       descripcion: '',
-      colorCalendario: '9'
+      colorCalendario: '9',
+      horarios: []
     });
   };
 
@@ -765,20 +822,323 @@ function VerTurnos() {
 
   // ========== FIN FUNCIONES DE GESTIÓN DE PACIENTES FIJOS ==========
 
+  // ========== FUNCIONES DE MANTENIMIENTO/LIMPIEZA ==========
+
+  const cargarPreviewLimpieza = async () => {
+    setCargandoLimpieza(true);
+    try {
+      const response = await axios.get('/api/admin/limpieza/preview');
+      setLimpiezaPreview(response.data);
+    } catch (error) {
+      console.error('Error al cargar preview de limpieza:', error);
+      mostrarMensaje('error', 'Error al obtener información de limpieza');
+    } finally {
+      setCargandoLimpieza(false);
+    }
+  };
+
+  const ejecutarLimpieza = async () => {
+    setCargandoLimpieza(true);
+    setModalConfirmarLimpieza(false);
+    try {
+      const response = await axios.post('/api/admin/limpieza/ejecutar');
+      setResultadoLimpieza(response.data);
+      mostrarMensaje('success', `✅ Limpieza completada: ${response.data.turnosEliminados} turnos y ${response.data.bloqueosEliminados} bloqueos eliminados`);
+      // Recargar datos
+      cargarDatos();
+      cargarPreviewLimpieza();
+    } catch (error) {
+      console.error('Error al ejecutar limpieza:', error);
+      mostrarMensaje('error', 'Error al ejecutar la limpieza');
+    } finally {
+      setCargandoLimpieza(false);
+    }
+  };
+
+  // Cargar preview cuando se activa el tab de mantenimiento
+  useEffect(() => {
+    if (tabActiva === 'mantenimiento') {
+      cargarPreviewLimpieza();
+      cargarGoogleCalendarStatus();
+    }
+  }, [tabActiva]);
+
+  // ========== FIN FUNCIONES DE MANTENIMIENTO ==========
+
+  // ========== FUNCIONES DE DÍAS NO LABORABLES ==========
+
+  const cargarDiasNoLaborables = async () => {
+    setCargandoDiasNoLaborables(true);
+    try {
+      const response = await axios.get('/api/dias-no-laborables');
+      setDiasNoLaborables(response.data);
+    } catch (error) {
+      console.error('Error al cargar días no laborables:', error);
+      mostrarMensaje('error', 'Error al cargar días no laborables');
+    } finally {
+      setCargandoDiasNoLaborables(false);
+    }
+  };
+
+  const toggleDiaSemana = async (diaSemana) => {
+    try {
+      const diasActuales = diasNoLaborables.diasSemana || [];
+      const nuevosDias = diasActuales.includes(diaSemana)
+        ? diasActuales.filter(d => d !== diaSemana)
+        : [...diasActuales, diaSemana];
+      
+      const response = await axios.put('/api/dias-no-laborables/dias-semana', {
+        diasSemana: nuevosDias
+      });
+      
+      setDiasNoLaborables(response.data);
+      mostrarMensaje('success', '✅ Configuración actualizada');
+    } catch (error) {
+      console.error('Error al actualizar días de la semana:', error);
+      mostrarMensaje('error', 'Error al actualizar configuración');
+    }
+  };
+
+  const agregarFechaNoLaborable = async (e) => {
+    e.preventDefault();
+    
+    if (!nuevaFechaNoLaborable.fecha) {
+      mostrarMensaje('error', 'La fecha es requerida');
+      return;
+    }
+    
+    try {
+      const response = await axios.post('/api/dias-no-laborables/fechas', nuevaFechaNoLaborable);
+      setDiasNoLaborables(response.data);
+      setNuevaFechaNoLaborable({ fecha: '', descripcion: '' });
+      mostrarMensaje('success', '✅ Fecha bloqueada agregada');
+    } catch (error) {
+      console.error('Error al agregar fecha:', error);
+      mostrarMensaje('error', error.response?.data?.error || 'Error al agregar fecha');
+    }
+  };
+
+  const eliminarFechaNoLaborable = async (fecha) => {
+    if (!confirm('¿Está seguro de eliminar este día bloqueado?')) return;
+    
+    try {
+      const response = await axios.delete(`/api/dias-no-laborables/fechas/${fecha}`);
+      setDiasNoLaborables(response.data);
+      mostrarMensaje('success', '✅ Fecha bloqueada eliminada');
+    } catch (error) {
+      console.error('Error al eliminar fecha:', error);
+      mostrarMensaje('error', 'Error al eliminar fecha');
+    }
+  };
+
+  // ========== FIN FUNCIONES DE DÍAS NO LABORABLES ==========
+
+  // ========== FUNCIONES DE GOOGLE CALENDAR ==========
+
+  const cargarGoogleCalendarStatus = async () => {
+    setCargandoGoogleCalendar(true);
+    setGoogleCalendarError(null);
+    try {
+      const response = await axios.get('/api/google-calendar/status');
+      setGoogleCalendarStatus(response.data);
+    } catch (error) {
+      console.error('Error al cargar estado de Google Calendar:', error);
+      setGoogleCalendarError('No se pudo obtener el estado de Google Calendar');
+    } finally {
+      setCargandoGoogleCalendar(false);
+    }
+  };
+
+  const conectarGoogleCalendar = async () => {
+    setCargandoGoogleCalendar(true);
+    setGoogleCalendarError(null);
+    try {
+      const response = await axios.get('/api/google-calendar/auth-url');
+      if (response.data.authUrl) {
+        // Redirigir a Google para autenticación
+        window.location.href = response.data.authUrl;
+      } else if (response.data.error) {
+        setGoogleCalendarError(response.data.error);
+      }
+    } catch (error) {
+      console.error('Error al obtener URL de autorización:', error);
+      setGoogleCalendarError('Error al iniciar conexión con Google Calendar');
+    } finally {
+      setCargandoGoogleCalendar(false);
+    }
+  };
+
+  const desconectarGoogleCalendar = async () => {
+    if (!window.confirm('¿Estás seguro de desconectar Google Calendar? Los turnos existentes no se eliminarán del calendario, pero no se sincronizarán nuevos cambios.')) {
+      return;
+    }
+    
+    setCargandoGoogleCalendar(true);
+    try {
+      await axios.post('/api/google-calendar/disconnect');
+      mostrarMensaje('success', 'Google Calendar desconectado');
+      cargarGoogleCalendarStatus();
+    } catch (error) {
+      console.error('Error al desconectar Google Calendar:', error);
+      mostrarMensaje('error', 'Error al desconectar Google Calendar');
+    } finally {
+      setCargandoGoogleCalendar(false);
+    }
+  };
+
+  const reconectarGoogleCalendar = async () => {
+    setCargandoGoogleCalendar(true);
+    try {
+      const response = await axios.post('/api/google-calendar/reconnect');
+      if (response.data.authUrl) {
+        window.location.href = response.data.authUrl;
+      }
+    } catch (error) {
+      console.error('Error al reconectar Google Calendar:', error);
+      setGoogleCalendarError('Error al reconectar Google Calendar');
+    } finally {
+      setCargandoGoogleCalendar(false);
+    }
+  };
+
+  // Verificar parámetros de URL para callback de Google Calendar
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const calendarConnected = urlParams.get('calendar_connected');
+    const calendarError = urlParams.get('calendar_error');
+    
+    if (calendarConnected === 'true') {
+      mostrarMensaje('success', '✅ Google Calendar conectado exitosamente');
+      // Limpiar parámetros de URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Activar tab de mantenimiento y cargar estado
+      setTabActiva('mantenimiento');
+      cargarGoogleCalendarStatus();
+    }
+    
+    if (calendarError) {
+      const errorMessages = {
+        'no_code': 'No se recibió código de autorización',
+        'exchange_failed': 'Error al procesar la autorización',
+        'exception': 'Error inesperado durante la autorización',
+        'access_denied': 'Acceso denegado por el usuario'
+      };
+      setGoogleCalendarError(errorMessages[calendarError] || calendarError);
+      setTabActiva('mantenimiento');
+    }
+  }, []);
+
+  // ========== FIN FUNCIONES DE GOOGLE CALENDAR ==========
+
+  // ========== FUNCIONES DE EVENTOS ==========
+  const cargarEventos = async () => {
+    try {
+      const response = await axios.get('/api/eventos');
+      setEventos(response.data);
+    } catch (error) {
+      console.error('Error al cargar eventos:', error);
+    }
+  };
+
+  const handleImagenEvento = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      mostrarMensaje('error', 'La imagen no puede superar los 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      setNuevoEvento(prev => ({ ...prev, imagenBase64: base64 }));
+      setImagenPreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const abrirFormularioEvento = (evento = null) => {
+    if (evento) {
+      setEventoEditando(evento);
+      setNuevoEvento({
+        titulo: evento.titulo,
+        descripcion: evento.descripcion || '',
+        fechaEvento: evento.fechaEvento || '',
+        horarioEvento: evento.horarioEvento || '',
+        imagenBase64: evento.imagenBase64 || ''
+      });
+      setImagenPreview(evento.imagenBase64 || null);
+    } else {
+      setEventoEditando(null);
+      setNuevoEvento({ titulo: '', descripcion: '', fechaEvento: '', horarioEvento: '', imagenBase64: '' });
+      setImagenPreview(null);
+    }
+    setMostrarFormularioEvento(true);
+  };
+
+  const cerrarFormularioEvento = () => {
+    setMostrarFormularioEvento(false);
+    setEventoEditando(null);
+    setNuevoEvento({ titulo: '', descripcion: '', fechaEvento: '', horarioEvento: '', imagenBase64: '' });
+    setImagenPreview(null);
+  };
+
+  const guardarEvento = async (e) => {
+    e.preventDefault();
+    if (!nuevoEvento.titulo.trim()) {
+      mostrarMensaje('error', 'El título es obligatorio');
+      return;
+    }
+    try {
+      const payload = {
+        titulo: nuevoEvento.titulo,
+        descripcion: nuevoEvento.descripcion,
+        fechaEvento: nuevoEvento.fechaEvento,
+        horarioEvento: nuevoEvento.horarioEvento,
+        imagenBase64: nuevoEvento.imagenBase64
+      };
+      if (eventoEditando) {
+        await axios.put(`/api/eventos/${eventoEditando.id}`, payload);
+        mostrarMensaje('success', 'Evento actualizado correctamente');
+      } else {
+        await axios.post('/api/eventos', payload);
+        mostrarMensaje('success', 'Evento creado correctamente');
+      }
+      cerrarFormularioEvento();
+      cargarEventos();
+    } catch (error) {
+      console.error('Error al guardar evento:', error.response?.data || error);
+      mostrarMensaje('error', 'Error al guardar el evento: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
+    }
+  };
+
+  const toggleEvento = async (id) => {
+    try {
+      await axios.put(`/api/eventos/${id}/toggle`);
+      cargarEventos();
+      mostrarMensaje('success', 'Estado del evento actualizado');
+    } catch (error) {
+      mostrarMensaje('error', 'Error al cambiar estado del evento');
+    }
+  };
+
+  const eliminarEvento = async (id) => {
+    try {
+      await axios.delete(`/api/eventos/${id}`);
+      setModalEliminarEvento({ visible: false, evento: null });
+      cargarEventos();
+      mostrarMensaje('success', 'Evento eliminado correctamente');
+    } catch (error) {
+      mostrarMensaje('error', 'Error al eliminar el evento');
+    }
+  };
+  // ========== FIN FUNCIONES DE EVENTOS ==========
+
   return (
     <div className="ver-turnos-page">
       <div className="container">
         <div className="page-header">
           <h2 className="page-title">Panel de Administración</h2>
           <div className="header-actions">
-            <button 
-              onClick={sincronizarGoogleCalendar} 
-              className="btn btn-sync"
-              disabled={sincronizando}
-              title="Sincronizar con Google Calendar"
-            >
-              {sincronizando ? '🔄 Sincronizando...' : '📅 Sincronizar Calendar'}
-            </button>
             <button onClick={handleCerrarSesion} className="btn btn-secondary">
               Cerrar Sesión
             </button>
@@ -806,6 +1166,12 @@ function VerTurnos() {
             🗓️ Calendario Vacaciones
           </button>
           <button 
+            className={`tab-btn ${tabActiva === 'diasNoLaborables' ? 'activa' : ''}`}
+            onClick={() => setTabActiva('diasNoLaborables')}
+          >
+            🚫 Días No Laborables
+          </button>
+          <button 
             className={`tab-btn ${tabActiva === 'pacientesFijos' ? 'activa' : ''}`}
             onClick={() => setTabActiva('pacientesFijos')}
           >
@@ -817,12 +1183,28 @@ function VerTurnos() {
           >
             👥 Profesionales
           </button>
+          <button 
+            className={`tab-btn ${tabActiva === 'eventos' ? 'activa' : ''}`}
+            onClick={() => setTabActiva('eventos')}
+          >
+            🎉 Eventos
+          </button>
+          <button 
+            className={`tab-btn tab-mantenimiento ${tabActiva === 'mantenimiento' ? 'activa' : ''}`}
+            onClick={() => setTabActiva('mantenimiento')}
+          >
+            ⚙️ Mantenimiento
+          </button>
         </div>
 
-        {/* Mensajes */}
+        {/* Toast de mensajes global */}
         {mensaje.texto && (
-          <div className={`mensaje mensaje-${mensaje.tipo}`}>
-            {mensaje.texto}
+          <div className={`toast-mensaje toast-${mensaje.tipo}`} onClick={cerrarMensaje}>
+            <span className="toast-icono">
+              {mensaje.tipo === 'success' ? '✅' : mensaje.tipo === 'error' ? '❌' : 'ℹ️'}
+            </span>
+            <span className="toast-texto">{mensaje.texto}</span>
+            <button className="toast-cerrar" onClick={cerrarMensaje}>✕</button>
           </div>
         )}
 
@@ -1232,21 +1614,6 @@ function VerTurnos() {
 
         {tabActiva === 'calendario' && (
           <div className="calendario-content">
-            {mensaje.texto && (
-              <div 
-                className="mensaje-overlay-backdrop"
-                onClick={() => setMensaje({ tipo: '', texto: '' })}
-              >
-                <div className={`mensaje-overlay mensaje-overlay-${mensaje.tipo}`}>
-                  <div className="mensaje-icono">
-                    {mensaje.tipo === 'success' ? '✅' : '❌'}
-                  </div>
-                  <div className="mensaje-texto">{mensaje.texto}</div>
-                  <div className="mensaje-hint">Haz clic para cerrar</div>
-                </div>
-              </div>
-            )}
-
 
             <div className="selector-profesional card">
               <label htmlFor="profesional-calendario">Seleccionar Profesional:</label>
@@ -1364,6 +1731,161 @@ function VerTurnos() {
                       🔄 Limpiar Selección
                     </button>
                   </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {tabActiva === 'diasNoLaborables' && (
+          <div className="dias-no-laborables-content">
+            <div className="section-header">
+              <h3 className="section-title">🚫 Gestión de Días No Laborables</h3>
+              <p className="section-description">
+                Configure los días en que el consultorio no atiende. Los clientes no podrán agendar turnos en estos días.
+              </p>
+            </div>
+
+            {cargandoDiasNoLaborables ? (
+              <div className="loading">Cargando configuración...</div>
+            ) : (
+              <>
+                {/* Días de la semana no laborables */}
+                <div className="card">
+                  <h4 className="subsection-title">📅 Días de la Semana No Laborables</h4>
+                  <p className="help-text">
+                    Seleccione los días de la semana en que el consultorio NO atiende (por ejemplo: domingos)
+                  </p>
+                  
+                  <div className="dias-semana-grid">
+                    {[
+                      { valor: 'SUNDAY', nombre: 'Domingo', emoji: '☀️' },
+                      { valor: 'MONDAY', nombre: 'Lunes', emoji: '📅' },
+                      { valor: 'TUESDAY', nombre: 'Martes', emoji: '📅' },
+                      { valor: 'WEDNESDAY', nombre: 'Miércoles', emoji: '📅' },
+                      { valor: 'THURSDAY', nombre: 'Jueves', emoji: '📅' },
+                      { valor: 'FRIDAY', nombre: 'Viernes', emoji: '📅' },
+                      { valor: 'SATURDAY', nombre: 'Sábado', emoji: '🌙' }
+                    ].map(dia => (
+                      <button
+                        key={dia.valor}
+                        className={`dia-semana-btn ${diasNoLaborables.diasSemana?.includes(dia.valor) ? 'bloqueado' : ''}`}
+                        onClick={() => toggleDiaSemana(dia.valor)}
+                      >
+                        <span className="dia-emoji">{dia.emoji}</span>
+                        <span className="dia-nombre">{dia.nombre}</span>
+                        {diasNoLaborables.diasSemana?.includes(dia.valor) && (
+                          <span className="dia-estado">🚫 Bloqueado</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fechas específicas no laborables */}
+                <div className="card">
+                  <h4 className="subsection-title">📆 Fechas Específicas No Laborables</h4>
+                  <p className="help-text">
+                    Agregue días específicos como feriados, eventos especiales, etc.
+                  </p>
+
+                  <form onSubmit={agregarFechaNoLaborable} className="form-fecha-no-laborable">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Fecha</label>
+                        <input
+                          type="date"
+                          value={nuevaFechaNoLaborable.fecha}
+                          onChange={(e) => setNuevaFechaNoLaborable({
+                            ...nuevaFechaNoLaborable,
+                            fecha: e.target.value
+                          })}
+                          min={new Date().toISOString().split('T')[0]}
+                          required
+                        />
+                      </div>
+                      <div className="form-group form-group-large">
+                        <label>Descripción (opcional)</label>
+                        <input
+                          type="text"
+                          value={nuevaFechaNoLaborable.descripcion}
+                          onChange={(e) => setNuevaFechaNoLaborable({
+                            ...nuevaFechaNoLaborable,
+                            descripcion: e.target.value
+                          })}
+                          placeholder="Ej: Día de la Independencia, Evento especial..."
+                        />
+                      </div>
+                      <button type="submit" className="btn btn-primary">
+                        ➕ Agregar Fecha
+                      </button>
+                    </div>
+                  </form>
+
+                  {diasNoLaborables.fechasEspecificas.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No hay fechas específicas bloqueadas</p>
+                    </div>
+                  ) : (
+                    <div className="fechas-no-laborables-list">
+                      <table className="tabla-fechas">
+                        <thead>
+                          <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {diasNoLaborables.fechasEspecificas
+                            .sort((a, b) => {
+                              const fechaA = typeof a === 'string' ? a : a.fecha;
+                              const fechaB = typeof b === 'string' ? b : b.fecha;
+                              return fechaA.localeCompare(fechaB);
+                            })
+                            .map((item, index) => {
+                              const fecha = typeof item === 'string' ? item : item.fecha;
+                              const descripcion = typeof item === 'string' ? '' : item.descripcion;
+                              const fechaObj = new Date(fecha + 'T00:00:00');
+                              
+                              return (
+                                <tr key={index}>
+                                  <td>
+                                    <strong>{fechaObj.toLocaleDateString('es-AR', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}</strong>
+                                  </td>
+                                  <td>{descripcion || <em className="sin-descripcion">Sin descripción</em>}</td>
+                                  <td>
+                                    <button
+                                      className="btn btn-danger btn-small"
+                                      onClick={() => eliminarFechaNoLaborable(fecha)}
+                                    >
+                                      🗑️ Eliminar
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Información importante */}
+                <div className="info-card card">
+                  <h5>ℹ️ Información Importante</h5>
+                  <ul className="info-list">
+                    <li>✅ Los días bloqueados no aparecerán disponibles en el calendario de agendar turno</li>
+                    <li>✅ Los clientes no podrán seleccionar estos días al agendar turnos</li>
+                    <li>✅ Los días de la semana bloqueados se aplican de forma recurrente</li>
+                    <li>✅ Las fechas específicas solo se bloquean para ese día en particular</li>
+                    <li>⚠️ Los turnos ya agendados en días bloqueados NO se cancelan automáticamente</li>
+                  </ul>
                 </div>
               </>
             )}
@@ -1759,6 +2281,69 @@ function VerTurnos() {
                     </small>
                   </div>
 
+                  <div className="form-group">
+                    <label>📅 Días y horarios de trabajo:</label>
+                    <div className="horarios-selector">
+                      {['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'].map(dia => {
+                        const horarioExistente = (nuevoProfesional.horarios || []).find(h => h.startsWith(dia + ':'));
+                        const activo = !!horarioExistente;
+                        const horaInicio = horarioExistente ? horarioExistente.split(':')[1] + ':' + horarioExistente.split(':')[2]?.split('-')[0] : '09:00';
+                        const horaFin = horarioExistente ? horarioExistente.split('-')[1] : '18:00';
+                        
+                        return (
+                          <div key={dia} className={`horario-dia-row ${activo ? 'activo' : ''}`}>
+                            <label className="horario-dia-check">
+                              <input
+                                type="checkbox"
+                                checked={activo}
+                                onChange={(e) => {
+                                  let nuevosHorarios = [...(nuevoProfesional.horarios || [])];
+                                  if (e.target.checked) {
+                                    nuevosHorarios.push(`${dia}:09:00-18:00`);
+                                  } else {
+                                    nuevosHorarios = nuevosHorarios.filter(h => !h.startsWith(dia + ':'));
+                                  }
+                                  setNuevoProfesional({...nuevoProfesional, horarios: nuevosHorarios});
+                                }}
+                              />
+                              <span className="dia-nombre">{dia.charAt(0) + dia.slice(1).toLowerCase()}</span>
+                            </label>
+                            {activo && (
+                              <div className="horario-horas">
+                                <input
+                                  type="time"
+                                  value={horaInicio}
+                                  onChange={(e) => {
+                                    const nuevosHorarios = (nuevoProfesional.horarios || []).map(h => 
+                                      h.startsWith(dia + ':') ? `${dia}:${e.target.value}-${horaFin}` : h
+                                    );
+                                    setNuevoProfesional({...nuevoProfesional, horarios: nuevosHorarios});
+                                  }}
+                                  className="input-hora"
+                                />
+                                <span className="hora-separador">a</span>
+                                <input
+                                  type="time"
+                                  value={horaFin}
+                                  onChange={(e) => {
+                                    const nuevosHorarios = (nuevoProfesional.horarios || []).map(h => 
+                                      h.startsWith(dia + ':') ? `${dia}:${horaInicio}-${e.target.value}` : h
+                                    );
+                                    setNuevoProfesional({...nuevoProfesional, horarios: nuevosHorarios});
+                                  }}
+                                  className="input-hora"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <small className="form-hint">
+                      Seleccioná los días que trabaja el profesional y configurá el horario de cada día
+                    </small>
+                  </div>
+
                   <div className="form-actions">
                     <button type="submit" className="btn btn-success">
                       💾 {profesionalEditando ? 'Actualizar' : 'Guardar'} Profesional
@@ -1795,6 +2380,21 @@ function VerTurnos() {
                           {coloresCalendario.find(c => c.id === prof.colorCalendario)?.nombre || 'Azul'}
                         </span>
                       </div>
+                      {prof.horarios && prof.horarios.length > 0 && (
+                        <div className="profesional-horarios-badge">
+                          <span className="horarios-titulo">📅 Horarios:</span>
+                          {prof.horarios.map((h, idx) => {
+                            const partes = h.split(':');
+                            const dia = partes[0].charAt(0) + partes[0].slice(1).toLowerCase();
+                            const horas = h.substring(h.indexOf(':') + 1);
+                            return (
+                              <span key={idx} className="horario-badge">
+                                {dia}: {horas}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="profesional-acciones">
                       <button 
@@ -1868,6 +2468,430 @@ function VerTurnos() {
                       onClick={cerrarModalEliminarProfesional}
                     >
                       No, volver
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab de Eventos */}
+        {tabActiva === 'eventos' && (
+          <div className="eventos-admin-content">
+            <div className="section-header">
+              <h3>🎉 Gestión de Eventos y Programas</h3>
+              <button className="btn-nuevo" onClick={() => abrirFormularioEvento()}>
+                + Nuevo Evento
+              </button>
+            </div>
+
+            {/* Formulario de Evento */}
+            {mostrarFormularioEvento && (
+              <div className="formulario-evento card">
+                <h4>{eventoEditando ? '✏️ Editar Evento' : '➕ Nuevo Evento'}</h4>
+                <form onSubmit={guardarEvento}>
+                  <div className="form-group">
+                    <label>Título *</label>
+                    <input
+                      type="text"
+                      value={nuevoEvento.titulo}
+                      onChange={(e) => setNuevoEvento({...nuevoEvento, titulo: e.target.value})}
+                      placeholder="Nombre del evento"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Descripción</label>
+                    <textarea
+                      value={nuevoEvento.descripcion}
+                      onChange={(e) => setNuevoEvento({...nuevoEvento, descripcion: e.target.value})}
+                      placeholder="Descripción del evento..."
+                      rows="3"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Fecha del evento</label>
+                    <input
+                      type="date"
+                      value={nuevoEvento.fechaEvento}
+                      onChange={(e) => setNuevoEvento({...nuevoEvento, fechaEvento: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Horario del evento</label>
+                    <input
+                      type="text"
+                      value={nuevoEvento.horarioEvento}
+                      onChange={(e) => setNuevoEvento({...nuevoEvento, horarioEvento: e.target.value})}
+                      placeholder="Ej: 10:00 a 14:00 hs"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Imagen del evento (máx. 5MB)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImagenEvento}
+                    />
+                    {imagenPreview && (
+                      <div className="imagen-preview">
+                        <img src={imagenPreview} alt="Preview" />
+                        <button 
+                          type="button" 
+                          className="btn-quitar-imagen"
+                          onClick={() => { setImagenPreview(null); setNuevoEvento(prev => ({...prev, imagenBase64: ''})); }}
+                        >
+                          ✕ Quitar imagen
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn-guardar">
+                      💾 {eventoEditando ? 'Actualizar' : 'Crear'} Evento
+                    </button>
+                    <button type="button" className="btn-cancelar" onClick={cerrarFormularioEvento}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Lista de Eventos */}
+            {eventos.length === 0 ? (
+              <p style={{textAlign: 'center', padding: '40px', color: '#666'}}>No hay eventos creados aún</p>
+            ) : (
+              <div className="eventos-admin-grid">
+                {eventos.map((evento) => (
+                  <div key={evento.id} className={`evento-admin-card ${!evento.activo ? 'inactivo' : ''}`}>
+                    {evento.imagenBase64 && (
+                      <div className="evento-admin-img">
+                        <img src={evento.imagenBase64} alt={evento.titulo} />
+                      </div>
+                    )}
+                    <div className="evento-admin-info">
+                      <div className="evento-admin-header">
+                        <h4>{evento.titulo}</h4>
+                        <span className={`badge-estado ${evento.activo ? 'activo' : 'inactivo'}`}>
+                          {evento.activo ? '✅ Visible' : '🚫 Oculto'}
+                        </span>
+                      </div>
+                      {evento.fechaEvento && (
+                        <p className="evento-admin-fecha">
+                          📅 {new Date(evento.fechaEvento + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                      )}
+                      {evento.horarioEvento && (
+                        <p className="evento-admin-fecha">🕐 {evento.horarioEvento}</p>
+                      )}
+                      {evento.descripcion && <p className="evento-admin-desc">{evento.descripcion}</p>}
+                      <div className="evento-admin-actions">
+                        <button className="btn-small btn-editar" onClick={() => abrirFormularioEvento(evento)}>
+                          ✏️ Editar
+                        </button>
+                        <button className="btn-small btn-toggle" onClick={() => toggleEvento(evento.id)}>
+                          {evento.activo ? '🚫 Ocultar' : '✅ Mostrar'}
+                        </button>
+                        <button className="btn-small btn-eliminar" onClick={() => setModalEliminarEvento({ visible: true, evento })}>
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Modal confirmar eliminación */}
+            {modalEliminarEvento.visible && (
+              <div className="modal-overlay">
+                <div className="modal-content">
+                  <h3>⚠️ Confirmar eliminación</h3>
+                  <p>¿Estás seguro de eliminar el evento <strong>"{modalEliminarEvento.evento?.titulo}"</strong>?</p>
+                  <div className="modal-actions">
+                    <button className="btn-modal btn-danger" onClick={() => eliminarEvento(modalEliminarEvento.evento.id)}>
+                      Sí, eliminar
+                    </button>
+                    <button className="btn-modal btn-volver" onClick={() => setModalEliminarEvento({ visible: false, evento: null })}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab de Mantenimiento */}
+        {tabActiva === 'mantenimiento' && (
+          <div className="mantenimiento-content">
+            <div className="mantenimiento-header">
+              <div className="mantenimiento-intro">
+                <div className="intro-icon">⚙️</div>
+                <div className="intro-text">
+                  <h3>Mantenimiento del Sistema</h3>
+                  <p>Gestiona la conexión con Google Calendar y la limpieza automática de datos antiguos.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección de Google Calendar */}
+            <div className="google-calendar-section">
+              <div className="section-header">
+                <h4>📅 Google Calendar</h4>
+                <p className="section-description">
+                  Conecta tu cuenta de Google para sincronizar automáticamente los turnos con Google Calendar.
+                </p>
+              </div>
+
+              {googleCalendarError && (
+                <div className="google-calendar-error">
+                  <span className="error-icon">❌</span>
+                  <span>{googleCalendarError}</span>
+                  <button 
+                    className="btn-dismiss"
+                    onClick={() => setGoogleCalendarError(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <div className="google-calendar-status-card">
+                {cargandoGoogleCalendar ? (
+                  <div className="loading-status">
+                    <span className="spinner">🔄</span> Verificando conexión...
+                  </div>
+                ) : googleCalendarStatus ? (
+                  <>
+                    <div className="status-header">
+                      <div className={`status-indicator ${googleCalendarStatus.connected ? 'connected' : 'disconnected'}`}>
+                        <span className="status-dot"></span>
+                        <span className="status-text">
+                          {googleCalendarStatus.connected ? 'Conectado' : 'Desconectado'}
+                        </span>
+                      </div>
+                      {!googleCalendarStatus.enabled && (
+                        <span className="status-badge disabled">Calendar deshabilitado en configuración</span>
+                      )}
+                    </div>
+
+                    {googleCalendarStatus.connected && googleCalendarStatus.calendarInfo && (
+                      <div className="calendar-info">
+                        <div className="info-row">
+                          <span className="info-label">Calendario:</span>
+                          <span className="info-value">{googleCalendarStatus.calendarInfo.name || 'Calendario principal'}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">ID:</span>
+                          <span className="info-value info-id">{googleCalendarStatus.calendarInfo.id}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="calendar-actions">
+                      {!googleCalendarStatus.connected ? (
+                        <button 
+                          className="btn btn-google-connect"
+                          onClick={conectarGoogleCalendar}
+                          disabled={cargandoGoogleCalendar || !googleCalendarStatus.enabled}
+                        >
+                          <span className="google-icon">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
+                              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                          </span>
+                          Conectar con Google Calendar
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-google-disconnect"
+                          onClick={desconectarGoogleCalendar}
+                          disabled={cargandoGoogleCalendar}
+                        >
+                          🔌 Desconectar Google Calendar
+                        </button>
+                      )}
+                    </div>
+
+                    {googleCalendarStatus.connected && (
+                      <div className="calendar-features">
+                        <h5>✅ Funciones activas:</h5>
+                        <ul>
+                          <li>Los turnos nuevos se crean automáticamente en Google Calendar</li>
+                          <li>Las modificaciones de turnos se sincronizan en tiempo real</li>
+                          <li>Al cancelar un turno, se elimina del calendario</li>
+                          <li>Cada profesional tiene su color asignado en el calendario</li>
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="status-unknown">
+                    <p>No se pudo obtener el estado de Google Calendar</p>
+                    <button 
+                      className="btn btn-google-connect"
+                      onClick={conectarGoogleCalendar}
+                    >
+                      Conectar con Google Calendar
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <hr className="section-divider" />
+
+            {/* Información de Configuración */}
+            <div className="mantenimiento-card info-card">
+              <h4>📋 Configuración Actual</h4>
+              <div className="config-grid">
+                <div className="config-item">
+                  <span className="config-label">Retención de Turnos:</span>
+                  <span className="config-value">{limpiezaPreview?.mesesRetencionTurnos || 3} meses</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">Retención de Bloqueos:</span>
+                  <span className="config-value">{limpiezaPreview?.diasRetencionBloqueos || 30} días</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">Limpieza Automática:</span>
+                  <span className="config-value">Día 1 de cada mes a las 03:00 AM</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview de Limpieza */}
+            <div className="mantenimiento-card preview-card">
+              <h4>🔍 Datos que serían eliminados</h4>
+              {cargandoLimpieza ? (
+                <div className="loading-preview">
+                  <span className="spinner">🔄</span> Calculando...
+                </div>
+              ) : limpiezaPreview ? (
+                <div className="preview-grid">
+                  <div className="preview-item">
+                    <span className="preview-icon">📅</span>
+                    <span className="preview-count">{limpiezaPreview.turnosAEliminar}</span>
+                    <span className="preview-label">Turnos anteriores a {limpiezaPreview.fechaLimiteTurnos}</span>
+                  </div>
+                  <div className="preview-item">
+                    <span className="preview-icon">🚫</span>
+                    <span className="preview-count">{limpiezaPreview.bloqueosAEliminar}</span>
+                    <span className="preview-label">Bloqueos anteriores a {limpiezaPreview.fechaLimiteBloqueos}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="preview-empty">No se pudo cargar la información</p>
+              )}
+              <button 
+                className="btn btn-secondary btn-refresh"
+                onClick={cargarPreviewLimpieza}
+                disabled={cargandoLimpieza}
+              >
+                🔄 Actualizar
+              </button>
+            </div>
+
+            {/* Advertencias */}
+            <div className="mantenimiento-card warning-card">
+              <h4>⚠️ Advertencias Importantes</h4>
+              <ul className="warning-list">
+                <li>
+                  <span className="warning-icon">🗑️</span>
+                  <span>La limpieza <strong>elimina permanentemente</strong> los turnos y bloqueos antiguos.</span>
+                </li>
+                <li>
+                  <span className="warning-icon">📅</span>
+                  <span>También se eliminan los eventos correspondientes de <strong>Google Calendar</strong>.</span>
+                </li>
+                <li>
+                  <span className="warning-icon">✅</span>
+                  <span>Los <strong>Profesionales</strong> y <strong>Pacientes Fijos</strong> NO se eliminan.</span>
+                </li>
+                <li>
+                  <span className="warning-icon">⏰</span>
+                  <span>La limpieza automática se ejecuta el <strong>día 1 de cada mes</strong> a las 3 AM.</span>
+                </li>
+                <li>
+                  <span className="warning-icon">💾</span>
+                  <span>Considera exportar los datos importantes antes de ejecutar una limpieza manual.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Botón de Limpieza Manual */}
+            <div className="mantenimiento-card action-card">
+              <h4>🧹 Limpieza Manual</h4>
+              <p className="action-description">
+                Ejecuta la limpieza inmediatamente sin esperar a la programación automática.
+                Solo se eliminarán los datos que cumplan los criterios de retención configurados.
+              </p>
+              
+              {resultadoLimpieza && (
+                <div className="resultado-limpieza">
+                  <h5>✅ Última limpieza ejecutada:</h5>
+                  <p>
+                    Se eliminaron <strong>{resultadoLimpieza.turnosEliminados}</strong> turnos 
+                    y <strong>{resultadoLimpieza.bloqueosEliminados}</strong> bloqueos
+                    el {new Date(resultadoLimpieza.fechaEjecucion).toLocaleString('es-AR')}
+                  </p>
+                </div>
+              )}
+
+              <button 
+                className="btn btn-danger btn-limpieza"
+                onClick={() => setModalConfirmarLimpieza(true)}
+                disabled={cargandoLimpieza || (limpiezaPreview?.turnosAEliminar === 0 && limpiezaPreview?.bloqueosAEliminar === 0)}
+              >
+                {cargandoLimpieza ? '🔄 Ejecutando...' : '🗑️ Ejecutar Limpieza Ahora'}
+              </button>
+              
+              {limpiezaPreview?.turnosAEliminar === 0 && limpiezaPreview?.bloqueosAEliminar === 0 && (
+                <p className="no-data-message">✨ No hay datos antiguos para eliminar</p>
+              )}
+            </div>
+
+            {/* Modal de Confirmación */}
+            {modalConfirmarLimpieza && (
+              <div className="modal-overlay" onClick={() => setModalConfirmarLimpieza(false)}>
+                <div className="modal-content modal-limpieza" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header modal-header-danger">
+                    <h3>⚠️ Confirmar Limpieza</h3>
+                    <button className="modal-close" onClick={() => setModalConfirmarLimpieza(false)}>✕</button>
+                  </div>
+                  
+                  <div className="modal-body">
+                    <div className="modal-icon-warning">🗑️</div>
+                    <p className="modal-warning-text">
+                      Estás a punto de eliminar <strong>permanentemente</strong>:
+                    </p>
+                    <ul className="modal-delete-list">
+                      <li>📅 <strong>{limpiezaPreview?.turnosAEliminar || 0}</strong> turnos antiguos</li>
+                      <li>🚫 <strong>{limpiezaPreview?.bloqueosAEliminar || 0}</strong> bloqueos de horario</li>
+                    </ul>
+                    <p className="modal-advertencia-strong">
+                      ⚠️ Esta acción NO se puede deshacer
+                    </p>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button 
+                      className="btn-modal btn-cancelar-modal"
+                      onClick={ejecutarLimpieza}
+                    >
+                      Sí, eliminar datos
+                    </button>
+                    <button 
+                      className="btn-modal btn-volver"
+                      onClick={() => setModalConfirmarLimpieza(false)}
+                    >
+                      No, cancelar
                     </button>
                   </div>
                 </div>

@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: psique-postgres
     environment:
-      POSTGRES_DB: psique_turnos
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: consultorio-psique-turnos
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
@@ -26,12 +26,13 @@ services:
       dockerfile: ./backend/Dockerfile
     container_name: psique-app-monolitica
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/psique_turnos
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/consultorio-psique-turnos
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      GOOGLE_CALENDAR_ENABLED: ${GOOGLE_CALENDAR_ENABLED:-true}
+      PORT: 3000
     depends_on:
       postgres:
         condition: service_healthy

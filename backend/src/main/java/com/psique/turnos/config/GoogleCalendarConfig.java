@@ -1,8 +1,7 @@
 package com.psique.turnos.config;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -12,12 +11,14 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,27 +34,118 @@ public class GoogleCalendarConfig {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final String REDIRECT_URI = "http://localhost:3000/oauth2callback";
 
     @Value("${google.calendar.credentials.file}")
     private Resource credentialsFile;
 
     @Value("${google.calendar.enabled:false}")
+    @Getter
     private boolean calendarEnabled;
 
-    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // Load client secrets
+    private volatile GoogleAuthorizationCodeFlow flow;
+    private volatile NetHttpTransport httpTransport;
+    private volatile Calendar calendarService;
+    private volatile boolean disconnected = false;
+
+    private NetHttpTransport getHttpTransport() throws GeneralSecurityException, IOException {
+        if (httpTransport == null) {
+            httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+        }
+        return httpTransport;
+    }
+
+    private synchronized GoogleAuthorizationCodeFlow buildFlow() throws IOException, GeneralSecurityException {
+        if (!credentialsFile.exists()) {
+            log.warn("⚠️ Archivo credentials.json no encontrado");
+            return null;
+        }
+
         InputStream in = credentialsFile.getInputStream();
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-        // Build flow and trigger user authorization request
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+        return new GoogleAuthorizationCodeFlow.Builder(
+                getHttpTransport(), JSON_FACTORY, clientSecrets, SCOPES)
+                .setDataStoreFactory(new FileDataStoreFactory(new File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
+    }
+
+    private synchronized void ensureFlow() throws IOException, GeneralSecurityException {
+        if (flow == null) {
+            flow = buildFlow();
+        }
+    }
+
+    public String getAuthorizationUrl() {
+        try {
+            ensureFlow();
+            if (flow == null) return null;
+            return flow.newAuthorizationUrl()
+                    .setRedirectUri(REDIRECT_URI)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error al generar URL de autorización", e);
+            return null;
+        }
+    }
+
+    public synchronized void handleAuthorizationCode(String code) throws IOException, GeneralSecurityException {
+        // Siempre recrear el flow para tener DataStore fresco
+        flow = buildFlow();
+        if (flow == null) {
+            throw new IOException("No se pudo inicializar el flujo de autorización");
+        }
+
+        TokenResponse tokenResponse = flow.newTokenRequest(code)
+                .setRedirectUri(REDIRECT_URI)
+                .execute();
+
+        flow.createAndStoreCredential(tokenResponse, "user");
+        disconnected = false;
         
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        // Construir nuevo Calendar service
+        Credential credential = flow.loadCredential("user");
+        calendarService = new Calendar.Builder(getHttpTransport(), JSON_FACTORY, credential)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+        
+        log.info("✅ Credenciales de Google Calendar almacenadas exitosamente");
+    }
+
+    public synchronized void revokeCredentials() throws IOException {
+        // 1. Borrar archivos de tokens
+        File tokensDir = new File(TOKENS_DIRECTORY_PATH);
+        if (tokensDir.exists() && tokensDir.isDirectory()) {
+            File[] files = tokensDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (!file.delete()) {
+                        log.warn("No se pudo borrar: {}", file.getAbsolutePath());
+                    }
+                }
+            }
+            tokensDir.delete();
+        }
+        
+        // 2. Invalidar todo - el flow cachea credenciales en su DataStore interno
+        calendarService = null;
+        flow = null;
+        disconnected = true;
+        
+        log.info("🔓 Credenciales de Google Calendar revocadas");
+    }
+
+    public synchronized boolean isConnected() {
+        if (!calendarEnabled || disconnected) return false;
+        try {
+            ensureFlow();
+            if (flow == null) return false;
+            Credential credential = flow.loadCredential("user");
+            return credential != null && credential.getAccessToken() != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Bean
@@ -64,23 +156,38 @@ public class GoogleCalendarConfig {
         }
 
         try {
-            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-            Calendar calendar = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+            if (!credentialsFile.exists()) {
+                log.warn("⚠️ Archivo credentials.json no encontrado en resources/");
+                return null;
+            }
+
+            ensureFlow();
+            if (flow == null) return null;
+
+            Credential credential = flow.loadCredential("user");
+            if (credential == null) {
+                log.info("📅 No hay credenciales almacenadas. El usuario debe autorizar la aplicación.");
+                return null;
+            }
+
+            calendarService = new Calendar.Builder(getHttpTransport(), JSON_FACTORY, credential)
                     .setApplicationName(APPLICATION_NAME)
                     .build();
 
             log.info("✅ Google Calendar API configurado correctamente");
-            log.info("📅 Sincronización con Google Calendar ACTIVA");
-            return calendar;
+            return calendarService;
 
         } catch (GeneralSecurityException | IOException e) {
             log.error("❌ Error al inicializar Google Calendar API: {}", e.getMessage());
-            log.warn("⚠️  La aplicación funcionará sin sincronización con Google Calendar");
             return null;
         }
     }
 
-    public boolean isCalendarEnabled() {
-        return calendarEnabled;
+    public synchronized Calendar getCalendarService() {
+        if (disconnected) return null;
+        if (calendarService == null) {
+            return googleCalendar();
+        }
+        return calendarService;
     }
 }
