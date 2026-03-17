@@ -31,6 +31,44 @@
   box-sizing: border-box;
 }
 
+/* ===== Scrollbar personalizada ===== */
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-primary-lighter);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  border-radius: 8px;
+  border: 2px solid var(--color-primary-lighter);
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--color-secondary) 0%, var(--color-accent) 100%);
+  border-color: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--color-primary-lighter);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) var(--color-primary-lighter);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: linear-gradient(135deg, #F8F9FB 0%, #E8EDF5 100%);
   color: var(--color-text);
