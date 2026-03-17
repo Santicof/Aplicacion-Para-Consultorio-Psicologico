@@ -69,3 +69,4 @@ google:
     webhook:
       enabled: false
       url: ""
+    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI:http://localhost:3000/oauth2callback}

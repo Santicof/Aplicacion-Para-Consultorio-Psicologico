@@ -34,7 +34,9 @@ public class GoogleCalendarConfig {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
-    private static final String REDIRECT_URI = "http://localhost:3000/oauth2callback";
+
+    @Value("${google.calendar.redirect-uri:http://localhost:3000/oauth2callback}")
+    private String redirectUri;
 
     @Value("${google.calendar.credentials.file}")
     private Resource credentialsFile;
@@ -82,7 +84,7 @@ public class GoogleCalendarConfig {
             ensureFlow();
             if (flow == null) return null;
             return flow.newAuthorizationUrl()
-                    .setRedirectUri(REDIRECT_URI)
+                    .setRedirectUri(redirectUri)
                     .build();
         } catch (Exception e) {
             log.error("Error al generar URL de autorización", e);
@@ -98,7 +100,7 @@ public class GoogleCalendarConfig {
         }
 
         TokenResponse tokenResponse = flow.newTokenRequest(code)
-                .setRedirectUri(REDIRECT_URI)
+                .setRedirectUri(redirectUri)
                 .execute();
 
         flow.createAndStoreCredential(tokenResponse, "user");
