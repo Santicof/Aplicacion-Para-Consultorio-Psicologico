@@ -73,7 +73,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/agendar" element={<AgendarTurno />} />
-            <Route path="/gestion-consultorio-interno" element={<Login />} />
+            <Route path="/psq-admin-8x7k2m" element={<Login />} />
             <Route 
               path="/turnos" 
               element={

@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg").permitAll()
 
                 // Rutas SPA (React Router)
-                .requestMatchers("/home", "/agendar", "/turnos", "/admin", "/gestion-consultorio-interno").permitAll()
+                .requestMatchers("/home", "/agendar", "/turnos", "/admin", "/psq-admin-8x7k2m").permitAll()
 
                 // Auth endpoints
                 .requestMatchers("/api/auth/**").permitAll()
