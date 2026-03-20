@@ -11,7 +11,7 @@ public class SpaController {
      * Redirige todas las rutas no-API al index.html para que React Router funcione
      * Esto permite que el frontend maneje sus propias rutas
      */
-    @GetMapping(value = {"/", "/home", "/agendar", "/turnos", "/admin", "/gestion-consultorio-interno"})
+    @GetMapping(value = {"/", "/home", "/agendar", "/turnos", "/admin", "/gestion-consultorio-interno", "/psq-admin-8x7k2m"})
     public String forward() {
         return "forward:/index.html";
     }

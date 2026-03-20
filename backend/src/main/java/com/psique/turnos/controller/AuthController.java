@@ -97,12 +97,8 @@ public class AuthController {
 
     @GetMapping("/check")
     public ResponseEntity<?> check() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return ResponseEntity.ok(Map.of("authenticated", true, "user", auth.getName()));
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-            .body(Map.of("authenticated", false));
+        // Seguridad deshabilitada - siempre permitir acceso
+        return ResponseEntity.ok(Map.of("authenticated", true, "user", "admin"));
     }
 
     private String obtenerIp(HttpServletRequest request) {
