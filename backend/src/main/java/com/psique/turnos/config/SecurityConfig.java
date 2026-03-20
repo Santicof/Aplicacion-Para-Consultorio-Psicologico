@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,20 +21,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Deshabilitar CSRF
             .csrf(csrf -> csrf.disable())
-
-            // Deshabilitar CORS (app monolítica, misma-origen)
             .cors(cors -> cors.disable())
-
-            // Permitir TODAS las peticiones sin autenticación
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
             )
-
-            // Deshabilitar form login y httpBasic
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable());
+            .httpBasic(basic -> basic.disable())
+            .anonymous(anon -> anon.disable())
+            .headers(headers -> headers
+                .frameOptions(fo -> fo.sameOrigin())
+            );
 
         return http.build();
     }
