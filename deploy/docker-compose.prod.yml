@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: psique-postgres
+    environment:
+      POSTGRES_DB: consultorio-psique-turnos
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - psique-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  app:
+    build:
+      context: ..
+      dockerfile: ./backend/Dockerfile
+    container_name: psique-app
+    ports:
+      - "3000:3000"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/consultorio-psique-turnos
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      GOOGLE_CALENDAR_ENABLED: ${GOOGLE_CALENDAR_ENABLED:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${GOOGLE_CALENDAR_REDIRECT_URI}
+      PORT: 3000
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - psique-network
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: psique-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_data:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - app
+    networks:
+      - psique-network
+    restart: always
+
+  # Renovación automática de certificados SSL cada 12 horas
+  certbot:
+    image: certbot/certbot
+    container_name: psique-certbot
+    volumes:
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+    restart: always
+
+volumes:
+  postgres_data:
+  certbot_data:
+  certbot_www:
+
+networks:
+  psique-network:
+    driver: bridge
